@@ -55,7 +55,11 @@ Nav.ATTRS = {
 };
 
 Y.extend(Nav, Y.Base, {
+ 
+
+
     /**
+    *
     * Container Object with:
     * - navigable container id: string
     * - children[]: Node-Array that has all the child nodes of the navigable container
@@ -64,7 +68,7 @@ Y.extend(Nav, Y.Base, {
     container:{
 		containerId:null, /*String*/
 		children:[], /*array type*/
-		childIndexInFocus:-1
+		childIndexInFocus:-1/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
     },
 
 
@@ -95,8 +99,41 @@ Y.extend(Nav, Y.Base, {
 		Defined in node/js/node-event.js:69
 		Removes event listeners from the node and (optionally) its subtree
 		*/
+		delete this.anim;
     },
 
+	/**
+	* Function to enable smooth scrolling
+	* @param: y - integer, that represents the calculated height by which scroll should happen on Y axis on window object
+	*
+	*/
+    animateScroll: function(y){
+		this.anim = new Y.Anim({
+          node: 'window',
+          from: {
+			scroll: [Y.DOM.docScrollX(),Y.DOM.docScrollY()]
+          },
+          to: { // can't scoll to target if it's beyond the doc height - window height
+            scroll : [Y.DOM.docScrollX(),y]
+          },
+          duration: 0.5,
+          easing:  Y.Easing.easeOutStrong
+        }).run();
+/**
+backBoth backIn backOut bounceBoth bounceIn bounceOut
+easeBoth
+easeBothStrong
+easeIn
+easeInStrong
+easeNone
+easeOut
+easeOutStrong
+elasticBoth
+elasticIn
+elasticOut
+*/
+        //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+    },
 
     /**
     * Function to adjust scrolling and centering the child element which is in focus
@@ -108,71 +145,135 @@ Y.extend(Nav, Y.Base, {
 		var adjustScroll = childHeight/2;
 		var winHeight = Node.get('winHeight');
 		if(childHeight>winHeight){
-			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it
-								// position its top at the center of the screen.
+			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
 		}
 		var halfwinheight = winHeight/2;
+		//Node.scrollIntoView();
 		if(childsY>halfwinheight){
-			window.scroll(0,childsY-halfwinheight+adjustScroll);
+			//window.scroll(0,childsY-halfwinheight+adjustScroll);
+			if(this.anim && this.anim.get('running')){
+				this.anim.pause();
+			}
+			this.animateScroll(childsY-halfwinheight+adjustScroll);
 		}
 	},
+
+
+
+
+
+	/**
+	* Function to get the next child index on key down event.
+	* @param :integer, previous child index (for eg: 0 means 1st child)
+	* @return: integer, the new child index to be navigated to or focused to.
+	*/
+	getNextIndex: function(childIndexInFocus){
+		var container = this.container,
+			numofChildren = container.children.length;
+		if(childIndexInFocus!=-1){
+			container.children[childIndexInFocus].removeClass('highlight');
+		}
+		if(childIndexInFocus===numofChildren-1) {
+			childIndexInFocus=-1;
+			this.wasChildLast= true;
+		} else {
+			this.wasChildLast = false;
+		}
+		childIndexInFocus++;
+
+		return childIndexInFocus;
+	},
+
+
+
+
+
+	/**
+	* Function to get the child index previous to the @param1 index on key up event.
+	* @param :integer, current child index in focus (for eg: 0 means 1st child)
+	* @return: integer, the new child index to be navigated to or focused to.
+	*/
+	getPreviousIndex: function(childIndexInFocus) {
+		var container = this.container,
+			numofChildren = container.children.length;
+		if(childIndexInFocus>=0){
+			container.children[childIndexInFocus].removeClass('highlight');
+		}
+		if(childIndexInFocus===0) {
+			childIndexInFocus=numofChildren;
+		}
+		childIndexInFocus--;
+		if(childIndexInFocus<0) {
+			childIndexInFocus=0;
+		}
+		return childIndexInFocus;
+	},
+
+
+	/**
+	* Function to get the new child into focus and right scroll
+	* @param: Node, representing the child that should gain focus.
+	*
+	*/
+	bringChildtoFocus:function(childInFocus){
+		childInFocus.addClass('highlight').focus();
+		if(this.wasChildLast){
+			Y.log('last child');
+			if(this.anim && this.anim.get('running')){
+				this.anim.pause();
+			}
+			childInFocus.scrollIntoView();
+		}
+		this.scrollToCenter(childInFocus);
+	},
+
+
+
     /**
     * Function
     * on keyboard down key press, will focus/navigate to next child of the container registered
     */
     onMyKeyDown: function(e){
+			this.wasChildLast = false; //for handling some edge case where on down key we navigate back to 1st child.
 			e.preventDefault();
 			var container = this.container,
 				numofChildren = container.children.length,
-				childIndexInFocus = container.childIndexInFocus;
-			
-			if(childIndexInFocus!=-1){
-				//container.children[childIndexInFocus].replaceClass('dark','bright');
-				container.children[childIndexInFocus].removeClass('highlight');
-			}
-			if(childIndexInFocus===numofChildren-1) {
-				childIndexInFocus=-1;
-				
-			}
-			childIndexInFocus++;
-			Y.log('onkeydown:infocus:'+childIndexInFocus);
-
-			var childInFocus = container.children[childIndexInFocus];
-
-			//childInFocus.replaceClass('bright','dark').focus().scrollIntoView();
-			childInFocus.addClass('highlight').focus().scrollIntoView();
-			this.scrollToCenter(childInFocus);
-			container.childIndexInFocus=childIndexInFocus;
+				childIndexInFocus = container.childIndexInFocus,
+				newindex = this.getNextIndex(childIndexInFocus);
+			Y.log('onkeydown:infocus:'+newindex);
+			this.bringChildtoFocus(container.children[newindex]);
+			container.childIndexInFocus=newindex;
 	},
+
+
+
+
     /**
     * Function
     * on keyboard up key press, will focus/navigate to next child of the container registered
     */
 	onMyKeyUp: function(e){
 			e.preventDefault();
-			var container = this.container;
-			var numofChildren = container.children.length;
-			var childIndexInFocus = container.childIndexInFocus;
-			if(childIndexInFocus>=0){
-				//container.children[childIndexInFocus].replaceClass('dark','bright');
-				container.children[childIndexInFocus].removeClass('highlight');
-			}
-			if(childIndexInFocus===0) {
-				childIndexInFocus=numofChildren;
-			}
-			childIndexInFocus--;
-			if(childIndexInFocus<0) {
-				childIndexInFocus=0;
-			}
-			Y.log('onkeyup:Infocus:'+childIndexInFocus);
-			var childInFocus = container.children[childIndexInFocus];
-			//childInFocus.replaceClass('bright','dark').focus().scrollIntoView();
-			childInFocus.addClass('highlight').focus().scrollIntoView();
-			this.scrollToCenter(childInFocus);
-			//container.children[childIndexInFocus].scrollIntoView();
-			container.childIndexInFocus=childIndexInFocus;
+			var container = this.container,
+				numofChildren = container.children.length,
+				childIndexInFocus = container.childIndexInFocus;
+				newindex = this.getPreviousIndex(childIndexInFocus);
+
+			Y.log('onkeyup:Infocus:'+newindex);
+			this.bringChildtoFocus(container.children[newindex]);
+			//var childInFocus = container.children[newindex];
+			//childInFocus.addClass('highlight').focus();
+			//this.scrollToCenter(childInFocus);
+			container.childIndexInFocus=newindex;
 	},
 
+
+	/**
+	* Function to intiate navigation on the children of the container,
+	* bind the key up and down events to the relevant functions
+	* @param
+	*
+	*/
     initiateNavigation:function(){
 		Y.on('keypress', Y.bind(function (e) {
 			if (e.keyCode === 39) {
@@ -185,6 +286,9 @@ Y.extend(Nav, Y.Base, {
 		/** ON KeyUp **/
 		Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
     },
+
+
+
 
     /**
     * @param node: String representing the navigable containers id.
@@ -200,6 +304,8 @@ Y.extend(Nav, Y.Base, {
 		this.container.containerId = node.generateID();//generateID() returns existing node id or creates one if it doesnt exist
 		return this.container;
     },
+
+
 
 
 	/** test function which outputs a message to console.
