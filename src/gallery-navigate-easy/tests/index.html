@@ -36,6 +36,16 @@
 		<h2> Reddit </h2>
 	</div>
 	<div id="main">
+		<div class="bright">
+			<p>
+				var main = new Y.Nav(registry:[
+												{node:'#main' },
+												{node:'#sidebar'},
+												{node:'#rightbar'}
+											  ]
+												).initiateNavigation(); 
+			</p>
+		</div>
 		<div class="bright"> 
 		<p>1. var keyword is important </p>
 		</div>	
@@ -54,6 +64,9 @@
 		</div>
 		<div class="bright">
 			<p> 3. What if there is a ul with li items inside the nav container. ? </p>
+		</div> 
+		<div class="bright">
+			<p> 4. use Shift-right or shift-left to move thru containers and say if a list has horizontal elements then register them appropriately so that on left and right arrow keys you can move through them. </p>
 		</div> 
 	</div> 
 
@@ -79,16 +92,21 @@
 	// YUI SANDBOX
 	YUI().use('gallery-navigate-easy','node', 'event', function (Y) {
 		//var body = new Y.Nav({node:'body' }).initiateNavigation();
-		var main = new Y.Nav({node:'#main' });//.initiateNavigation();
-		main.initiateNavigation();
-		//main.killNavigation();
-		var sidebar = new Y.Nav({node:'#sidebar' }).initiateNavigation();
+		//var main = new Y.Nav({node:'#main' }).initiateNavigation();
+		//var sidebar = new Y.Nav({node:'#sidebar' }).initiateNavigation();
 		//var rightbar = new Y.Nav({node:'#rightbar' }).initiateNavigation();
 		//var links = new Y.Nav({node:'ul'}).initiateNavigation();
 		//Y.Nav.splash('I was splashed by splash function - Y.nav.splash');
 		//Y.Nav.attachNavigation('main');
 
-
+		var registry = new Y.Nav({
+							registry:[
+								{node:'#main' },
+								{node:'#sidebar'},
+								{node:'#rightbar'},
+								{node:'#links'}
+						  ]
+						}); 
 
 
 	});
