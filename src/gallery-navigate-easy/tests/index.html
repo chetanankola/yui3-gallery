@@ -23,7 +23,18 @@
 	<h1>{{ JAVASCRIPT AND CSS3 BEST PRACTICES AND PITFALLS }}</h1>
 	</div>	  
 	
-
+	<div id="sidebar"> 
+		<h2> Related Search </h2>
+		<h2> Related News</h2>
+		<h2> Related Images</h2>
+		<h2> Related Videos</h2>
+	</div>
+	<div id="rightbar"> 
+		<h2> Facebook Gossip </h2>
+		<h2> Twitter talks</h2>
+		<h2> Mashable chatter</h2>
+		<h2> Reddit </h2>
+	</div>
 	<div id="main">
 		<div class="bright"> 
 		<p>1. var keyword is important </p>
@@ -43,8 +54,8 @@
 		</div>
 		<div class="bright">
 			<p> 3. What if there is a ul with li items inside the nav container. ? </p>
-		</div>
-	</div>
+		</div> 
+	</div> 
 
 	<ul id="links">
 		<li> `Every time this happens its a FAIL` </li>
@@ -67,10 +78,19 @@
 	
 	// YUI SANDBOX
 	YUI().use('gallery-navigate-easy','node', 'event', function (Y) {
-		var mynav = new Y.Nav({node:'#main', }).initiateNavigation();
-		//var mynav2 = new Y.Nav({node:'#links', }).initiateNavigation();
+		//var body = new Y.Nav({node:'body' }).initiateNavigation();
+		var main = new Y.Nav({node:'#main' });//.initiateNavigation();
+		main.initiateNavigation();
+		//main.killNavigation();
+		var sidebar = new Y.Nav({node:'#sidebar' }).initiateNavigation();
+		//var rightbar = new Y.Nav({node:'#rightbar' }).initiateNavigation();
+		//var links = new Y.Nav({node:'ul'}).initiateNavigation();
 		//Y.Nav.splash('I was splashed by splash function - Y.nav.splash');
 		//Y.Nav.attachNavigation('main');
+
+
+
+
 	});
 	</script>
 </body>

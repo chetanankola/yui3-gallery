@@ -5,22 +5,17 @@
  */
 
 
-
 /*CONSTANTS*/
 var KEY_DOWN  = 40,
 	KEY_ENTER = 13,
 	KEY_ESC   = 27,
 	KEY_TAB   = 9,
 	KEY_UP    = 38,
-	KEY_RIGHT = 39;
-
-
-
-
-
-var Nav = function(config){
-	Nav.superclass.constructor.apply(this, arguments);
-};
+	KEY_RIGHT = 39,
+	SHIFT_RIGHT_ARROW = 'down:39+shift',
+	Nav = function(config){
+		Nav.superclass.constructor.apply(this, arguments);
+	};
 
 
 
@@ -55,8 +50,6 @@ Nav.ATTRS = {
 };
 
 Y.extend(Nav, Y.Base, {
- 
-
 
     /**
     *
@@ -83,6 +76,7 @@ Y.extend(Nav, Y.Base, {
 		Y.log(node);
 		if(node){
 			this.registerNavigableContainer(node);
+			Y.log('Navigable Container Object:','debug');
 			Y.log(this.container,'debug');
 		}
     },
@@ -113,26 +107,16 @@ Y.extend(Nav, Y.Base, {
           from: {
 			scroll: [Y.DOM.docScrollX(),Y.DOM.docScrollY()]
           },
-          to: { // can't scoll to target if it's beyond the doc height - window height
+          to: {
             scroll : [Y.DOM.docScrollX(),y]
           },
-          duration: 0.5,
+          duration: 0.3,
           easing:  Y.Easing.easeOutStrong
         }).run();
-/**
-backBoth backIn backOut bounceBoth bounceIn bounceOut
-easeBoth
-easeBothStrong
-easeIn
-easeInStrong
-easeNone
-easeOut
-easeOutStrong
-elasticBoth
-elasticIn
-elasticOut
-*/
-        //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+		/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
+		*/
+       
     },
 
     /**
@@ -148,12 +132,12 @@ elasticOut
 			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
 		}
 		var halfwinheight = winHeight/2;
-		//Node.scrollIntoView();
 		if(childsY>halfwinheight){
-			//window.scroll(0,childsY-halfwinheight+adjustScroll);
+			
 			if(this.anim && this.anim.get('running')){
 				this.anim.pause();
 			}
+			//window.scroll(0,childsY-halfwinheight+adjustScroll);
 			this.animateScroll(childsY-halfwinheight+adjustScroll);
 		}
 	},
@@ -175,9 +159,9 @@ elasticOut
 		}
 		if(childIndexInFocus===numofChildren-1) {
 			childIndexInFocus=-1;
-			this.wasChildLast= true;
+			this.wasLastChild= true;
 		} else {
-			this.wasChildLast = false;
+			this.wasLastChild = false;
 		}
 		childIndexInFocus++;
 
@@ -189,7 +173,7 @@ elasticOut
 
 
 	/**
-	* Function to get the child index previous to the @param1 index on key up event.
+	* Function to retrieve the child-index previous to the @param1  on key up event.
 	* @param :integer, current child index in focus (for eg: 0 means 1st child)
 	* @return: integer, the new child index to be navigated to or focused to.
 	*/
@@ -216,13 +200,15 @@ elasticOut
 	*
 	*/
 	bringChildtoFocus:function(childInFocus){
+
+		Y.log('In Focus:ID:'+childInFocus.generateID());
 		childInFocus.addClass('highlight').focus();
-		if(this.wasChildLast){
+		if(this.wasLastChild){
 			Y.log('last child');
 			if(this.anim && this.anim.get('running')){
 				this.anim.pause();
 			}
-			childInFocus.scrollIntoView();
+			childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
 		}
 		this.scrollToCenter(childInFocus);
 	},
@@ -234,7 +220,7 @@ elasticOut
     * on keyboard down key press, will focus/navigate to next child of the container registered
     */
     onMyKeyDown: function(e){
-			this.wasChildLast = false; //for handling some edge case where on down key we navigate back to 1st child.
+			this.wasLastChild = false; //for handling some edge case where on down key we navigate back to 1st child.
 			e.preventDefault();
 			var container = this.container,
 				numofChildren = container.children.length,
@@ -256,14 +242,11 @@ elasticOut
 			e.preventDefault();
 			var container = this.container,
 				numofChildren = container.children.length,
-				childIndexInFocus = container.childIndexInFocus;
+				childIndexInFocus = container.childIndexInFocus,
 				newindex = this.getPreviousIndex(childIndexInFocus);
 
 			Y.log('onkeyup:Infocus:'+newindex);
 			this.bringChildtoFocus(container.children[newindex]);
-			//var childInFocus = container.children[newindex];
-			//childInFocus.addClass('highlight').focus();
-			//this.scrollToCenter(childInFocus);
 			container.childIndexInFocus=newindex;
 	},
 
@@ -275,18 +258,49 @@ elasticOut
 	*
 	*/
     initiateNavigation:function(){
-		Y.on('keypress', Y.bind(function (e) {
+		/*Y.on('keypress', Y.bind(function (e) {
 			if (e.keyCode === 39) {
 				e.halt();
 				alert('right key pressed');
 			}
-		}));
+		},this));*/
+		
+
+		Y.one('body').on("key",  function(e) {
+			//alert('asd');
+			console.log('Shift+RightArrow was pressed');
+		},SHIFT_RIGHT_ARROW);
+
+
+
 		/** on KeyDown **/
-		Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
+		if(Y.BodySubscr){
+			this.killNavigation();
+		}else{
+			Y.BodySubscr = {};
+		}
+		Y.BodySubscr.keydown = Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
 		/** ON KeyUp **/
-		Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
+		Y.BodySubscr.keyup = Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
     },
 
+
+
+	/**
+	* Function to detach navigation and all events on the body key events
+	*
+	* @param none
+	*
+	*/
+    killNavigation: function() {
+		Y.log("killing all subscriptions");
+
+		for(var subscription in Y.BodySubscr){
+			Y.log('detaching subscription:'+subscription);
+			Y.BodySubscr.subscription.detach();
+			delete Y.BodySubscr;
+		}
+    },
 
 
 
@@ -302,12 +316,24 @@ elasticOut
 		});
 		this.container.children = children;
 		this.container.containerId = node.generateID();//generateID() returns existing node id or creates one if it doesnt exist
+		Y.log('Navigable ContainerId:'+this.container.containerId);
+		Y.log('total num of children:'+children.length);
+		Y.log('children:['+children+']');
 		return this.container;
     },
 
+/**
+	elementInViewport:function (el) {
+		var rect = el.getBoundingClientRect();
 
-
-
+		return (
+			rect.top >= 0 &&
+			rect.left >= 0 &&
+			rect.bottom <= window.innerHeight &&
+			rect.right <= window.innerWidth
+        );
+	},
+*/
 	/** test function which outputs a message to console.
 	* @param msg(String)
 	*/
