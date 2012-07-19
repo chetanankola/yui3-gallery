@@ -48,6 +48,11 @@
 		</div>
 		<div class="bright"> 
 		<p>1. var keyword is important </p>
+		
+		<p> really? check
+			<a href="http://bonsaiden.github.com/JavaScript-Garden/">this </a> then  
+			<a href="http://bonsaiden.github.com/JavaScript-Garden/">this </a> then 
+		</p>
 		</div>	
 
 		<div class="bright"> 
@@ -68,6 +73,25 @@
 		<div class="bright">
 			<p> 4. use Shift-right or shift-left to move thru containers and say if a list has horizontal elements then register them appropriately so that on left and right arrow keys you can move through them. </p>
 		</div> 
+		<div class="bright">
+			<p>Right now for every child inside a container when gains focus is scanned for links inside and the first link found is given the focus so that on return-key press made to navigate to the link </p>
+		</div>
+		<div class="bright">
+			<p>Bigger problem is: what if the item highlighted is a button? does it always have to contain some link? </p>
+		</div>
+		<div class="bright">
+			<p> Removing default outline when a link is active,focused or hovered, <br>
+				a {
+					outline:0	
+				  }	
+				  <br>
+				a:hover,a:focus,a:active { <br>
+					outline:#777 dotted 4px;<br>
+				} 
+</p>
+		</div>
+
+		<div class="bright"> <p> how about be able to browse through every link within the child!! </p> </div>
 	</div> 
 
 	<ul id="links">
@@ -102,9 +126,10 @@
 		var registry = new Y.Nav({
 							registry:[
 								{node:'#main' },
-								{node:'#sidebar'},
 								{node:'#rightbar'},
-								{node:'#links'}
+								{node:'#links'},
+								{node:'#sidebar'},
+								{node: '#header'}
 						  ]
 						}); 
 

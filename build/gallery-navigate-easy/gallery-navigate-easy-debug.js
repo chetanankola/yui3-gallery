@@ -10,6 +10,8 @@ YUI.add('gallery-navigate-easy', function(Y) {
 /*CONSTANTS*/
 var SHIFT_RIGHT_ARROW = 'down:39+shift',
 	SHIFT_LEFT_ARROW = 'down:37+shift',
+	KEY_TO_DISABLE_NAVIGATION = 'down:68+shift',
+	KEY_TO_ENABLE_NAVIGATION = 'down:69+shift',
 	_NEXT = true,
 	_PREV = false,
 	_CHILD_HIGHLIGHT_CLASS = 'transhighlight',
@@ -48,17 +50,10 @@ Nav.NAME = "Navigation";
 */
 Nav.ATTRS = {
 
-    /*node: {
-        setter: function(node) {
-            var n = Y.one(node);
-            if (!n) {
-                Y.log('Invalid Node Given in initialization ' + node);
-            }
-            return n;
-        }
-    },*/
     activeRegistryIndex:{value:null},
+    
     registry:[]
+
 };
 
 
@@ -82,10 +77,16 @@ Y.extend(Nav, Y.Base, {
     * - childIndexInFocus: Integer, that indicates the current index selected for the navigable container.
     */
     container:{
+		
 		node:null, /*DOM elem*/
+		
 		containerId:null, /*String*/
+		
 		children:[], /*array type*/
-		childIndexInFocus:-1/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
+		
+		childIndexInFocus:-1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
+
+		activeLink : null /*holds the current link within a child of the container which is receiving focus*/
     },
 
 
@@ -109,26 +110,67 @@ Y.extend(Nav, Y.Base, {
     initializer: function(cfg){
 		var self = this;
 
+		this.activateContainerNavigation();
+
+		this.makeNextContainerNavigable();
+
 		Y.one('body').on("key",  function(e) {
+			Y.log("============================");
+			Y.log('Navigation disabled');
+			self.deactivateAllNavigation();
+		},KEY_TO_DISABLE_NAVIGATION);
+
+		Y.one('body').on("key",  function(e) {
+			Y.log("============================");
+			Y.log('Navigation enabled');
+			if(self.activateContainerNavigation()){
+				self.makeNextContainerNavigable(_NEXT);
+			}
+		},KEY_TO_ENABLE_NAVIGATION);
+    },
+
+
+    activateContainerNavigation:function(){
+		var self = this;
+		if(Y.ContainerSubscr){
+			Y.log('Container navigation is already enabled');
+			return false;
+		}else{
+			Y.ContainerSubscr = {};
+		}
+
+		Y.ContainerSubscr.next = Y.one('body').on("key",  function(e) {
 			Y.log("============================");
 			Y.log('Shift+RightArrow was pressed');
 			self.makeNextContainerNavigable(_NEXT);
 
 		},SHIFT_RIGHT_ARROW);
 
-		Y.one('body').on("key",  function(e) {
+		Y.ContainerSubscr.prev = Y.one('body').on("key",  function(e) {
 			Y.log("============================");
 			Y.log('Shift+Left was pressed');
 			self.makeNextContainerNavigable(_PREV);
 		},SHIFT_LEFT_ARROW);
 
-		this.makeNextContainerNavigable();
+		return true;
     },
 
+    deactivateAllNavigation:function(){
+		this.deactivateRegisteredContainer(); //will also disable child events
+		this.deactivateContainerNavigation();
+    },
 
+    deactivateContainerNavigation:function(){
+		if(Y.ContainerSubscr){
+			Y.log("detaching  subscriptions to navigate across container");
 
-
-
+			for(var subscription in Y.ContainerSubscr){
+				Y.log('detaching subscription:'+subscription);
+				Y.ContainerSubscr[subscription].detach();
+			}
+			delete Y.ContainerSubscr;
+		}
+    },
 
 
 
@@ -145,8 +187,11 @@ Y.extend(Nav, Y.Base, {
 	* @return {Mixed} The sanitized transition.
 	*/
     makeNextContainerNavigable:function(shiftRight){
+		
 		var registry = this.get('registry'),
+		
 			index;
+		
 		if(registry.length>0){
 			index = this.getNextRegistryIndex(shiftRight);
 			if(index!== null && registry[index]){
@@ -187,8 +232,11 @@ Y.extend(Nav, Y.Base, {
 	* @return {integer} valid registered container index
 	*/
     getNextRegistryIndex:function(isRightKeyPressed) {
+		
 		var registry = this.get('registry'),
+		
 			regLen,
+		
 			regIndex=null;
 
 		if(registry && registry.length>0) { //if no registry exists then nothing was registered
@@ -326,7 +374,7 @@ Y.extend(Nav, Y.Base, {
 	*
 	*/
     deactivateRegisteredContainer:function(){
-		this.killAllSubscription();
+		this.killAllChildNavigationSubscription();
 		this.removeHighlightonContainer();
 		this.removeHighlightonCurrentChild();
 		this.resetContainer();
@@ -434,15 +482,15 @@ Y.extend(Nav, Y.Base, {
 
 
 	/**
-    * @method killAllSubscription
+    * @method killAllChildNavigationSubscription
 	* @protected
 	* Detach all the subscriptions to the body
 	* @param
 	*
 	*/
-    killAllSubscription:function() {
+    killAllChildNavigationSubscription:function() {
 		if(Y.BodySubscr){
-			this.detachAllSubscriptions();
+			this.detachAllChildSubscriptions();
 		}
     },
 
@@ -468,7 +516,7 @@ Y.extend(Nav, Y.Base, {
 		
 		/** on KeyDown **/
 		Y.BodySubscr = {};
-		Y.log('attaching new subscription');
+		Y.log('attaching new subscription for child navigation');
 		Y.BodySubscr.keydown = Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
 		/** ON KeyUp **/
 		Y.BodySubscr.keyup = Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
@@ -486,14 +534,14 @@ Y.extend(Nav, Y.Base, {
 
 
 	/**
-    * @method detachAllSubscriptions
+    * @method detachAllChildSubscriptions
 	* @protected
 	* Function to detach navigation and all events on the body key events
 	*
 	* @param none
 	*
 	*/
-    detachAllSubscriptions: function() {
+    detachAllChildSubscriptions: function() {
 		Y.log("detaching existing subscriptions");
 
 		for(var subscription in Y.BodySubscr){
@@ -753,10 +801,21 @@ Y.extend(Nav, Y.Base, {
 	*/
 	bringChildtoFocus:function(childInFocus){
 
-		var link = childInFocus.all('> a');
+		var link = childInFocus.all('a');
+
+		if(this.activeLink){
+			this.activeLink.blur();
+		}
+
+		var linkArr = [];
 		link.each(function(child,i,parent){
-			child.focus();
+			linkArr[i] = child;
 		});
+
+		if(linkArr[0]){
+			linkArr[0].focus();
+			this.activeLink = linkArr[0];
+		}
 
 		childInFocus.addClass(_CHILD_HIGHLIGHT_CLASS).focus();
 		if(this.anim && this.anim.get('running')){
@@ -767,7 +826,6 @@ Y.extend(Nav, Y.Base, {
 			//this needs to be outside since both up and down needs this
 			childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
 		}
-
 
 		if(this.container.childIndexInFocus===0){
 			childInFocus.scrollIntoView();
