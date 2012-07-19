@@ -13,6 +13,9 @@ var KEY_DOWN  = 40,
 	KEY_UP    = 38,
 	KEY_RIGHT = 39,
 	SHIFT_RIGHT_ARROW = 'down:39+shift',
+	SHIFT_LEFT_ARROW = 'down:37+shift',
+	_NEXT = true,
+	_PREV = false,
 	Nav = function(config){
 		Nav.superclass.constructor.apply(this, arguments);
 	};
@@ -75,50 +78,84 @@ Y.extend(Nav, Y.Base, {
     */
     initializer: function(cfg){
 		var self = this;
+
 		Y.one('body').on("key",  function(e) {
-			//alert('asd');
 			Y.log("============================");
 			Y.log('Shift+RightArrow was pressed');
-			self.makeNextContainerNavigable();
+			self.makeNextContainerNavigable(_NEXT);
 		},SHIFT_RIGHT_ARROW);
+
+		Y.one('body').on("key",  function(e) {
+			Y.log("============================");
+			Y.log('Shift+Left was pressed');
+			self.makeNextContainerNavigable(_PREV);
+		},SHIFT_LEFT_ARROW);
 
 		this.makeNextContainerNavigable();
 
+
+
+
     },
-    makeNextContainerNavigable:function(){
-		var registry = this.get('registry');
+    /**
+    * @param : boolean (true: get next container, false: get previous container)
+    */
+    makeNextContainerNavigable:function(shiftRight){
+		var registry = this.get('registry'),
+			index;
 		if(registry.length>0){
-			var index= this.getNextRegistryIndex();
+			index = this.getNextRegistryIndex(shiftRight);
 			if(index!== null && registry[index]){
 				var node = Y.one(registry[index].node);
-				this.deactivateRegisteredContainer();
-				this.registerContainer(node);
-				this.initiateNavigation();
+
+				if(node){
+					this.deactivateRegisteredContainer();
+					this.registerContainer(node);
+					this.initiateNavigation();
+				} else {
+					this.deactivateRegisteredContainer();
+					Y.log('Registered Container does not exist:id='+registry[index].node);
+				}
 			}
+		} else {
+			Y.log('nothing was registered for navigation');
 		}
     },
 
 
-    getNextRegistryIndex:function() {
+    /**
+    * @param: boolean: true: meaning Shift-Right
+    */
+    getNextRegistryIndex:function(isRightKeyPressed) {
 		var registry = this.get('registry'),
 			regLen,
-			regIndex;
+			regIndex=null;
 
 		if(registry && registry.length>0) { //if no registry exists then nothing was registered
-			regLen = registry.length;
-			regIndex = this.get('activeRegistryIndex');
 			
-			if(regIndex===null){
-				regIndex = 0;
-			}else{
-				regIndex++;
-				if(regIndex>=regLen){
+			var i=0;
+			for(i=0;i<registry.length;i++){
+				regLen = registry.length;
+				regIndex = this.get('activeRegistryIndex');
+				if(regIndex===null){ //case when we start first time
 					regIndex = 0;
+				}else{
+					regIndex = isRightKeyPressed ? (regIndex+1) : (regIndex-1);
+					if(regIndex>=regLen){
+						regIndex = 0;
+					}
+					if(regIndex<0){
+						regIndex = regLen-1;
+					}
+				}
+				this.set('activeRegistryIndex',regIndex);
+				Y.log('NextRegistryIndex:'+this.get('activeRegistryIndex'));
+				if(Y.one(registry[regIndex].node)){//node is fine
+					return regIndex;
+				}else{
+					Y.log('Registry contains a node which couldnt be found on page. Node:'+registry[regIndex].node);
 				}
 			}
-
-			this.set('activeRegistryIndex',regIndex);
-			Y.log('NextRegistryIndex:'+this.get('activeRegistryIndex'));
 			return regIndex;
 		}
 		return null;
@@ -131,7 +168,7 @@ Y.extend(Nav, Y.Base, {
     registerContainer:function(node){
 
 		if(node){
-			Y.log('activating container for navigation:'+node.generateID());
+			Y.log('activating container for navigation. Node:#'+node.generateID());
 			Y.log(node);
 			this.updateChildren(node); //will update node-container.children as array
 			Y.log('Navigable Container Object:','debug');
@@ -393,7 +430,14 @@ Y.extend(Nav, Y.Base, {
 	*/
 	bringChildtoFocus:function(childInFocus){
 
+
 		childInFocus.addClass('highlight').focus();
+
+		console.log('$$$$$$$$$$$$$$$$$$$$$$$$$$$');
+		var link = childInFocus.all('> a');
+		link.each(function(child,i,parent){
+			child.focus();
+		});
 		if(this.anim && this.anim.get('running')){
 			this.anim.pause();
 		}
