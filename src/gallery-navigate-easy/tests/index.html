@@ -13,7 +13,7 @@
 	<link href='http://fonts.googleapis.com/css?family=Signika+Negative|Exo|Unna' rel='stylesheet' type='text/css'>
 	<link href='http://fonts.googleapis.com/css?family=Waiting+for+the+Sunrise' rel='stylesheet' type='text/css'>
 
-	<link href='../../../build/gallery-navigate-easy/assets/index.css' rel='stylesheet' type='text/css'>
+	<link href='../../../build/gallery-navigate-easy/assets/gallery-navigate-easy-core.css' rel='stylesheet' type='text/css'>
 	<link rel="icon" type="image/gif" href="http://chetanankola.com/homepage/images/logo.gif" />  
 
 </head>
@@ -79,6 +79,11 @@
 		<div class="bright">
 			<p>Bigger problem is: what if the item highlighted is a button? does it always have to contain some link? </p>
 		</div>
+		<a class="bright" style="display:block;margin:20px 4% auto;" href="http://google.com">GOOGLE</a>
+
+		<div class="bright"><p>Specify an order in which the navigation should happen either directly in the node as a tag or in teh config</p></div>
+		<div class="bright"><p> be able to register a new node without specifying it in the config</p></div>
+		<div class="bright"><p> be able to set css for highlights, outline and containerhihglights when registering itself and not in seperate file</p></div>
 		<div class="bright">
 			<p> Removing default outline when a link is active,focused or hovered, <br>
 				a {
@@ -92,6 +97,13 @@
 		</div>
 
 		<div class="bright"> <p> how about be able to browse through every link within the child!! </p> </div>
+
+		<div class="bright"> <p> Put key-registration description eg:shift and -> = navigate between containers in config</p> </div>
+
+		<div class="bright"> <p>disabling css should still show the right titles.. and then add aria for screen reader help and then add javascript for navigation!! </p> </div>
+
+
+		<div class="bright"> <p> horizontal lists should be left-right arrow navigable </p> </div>
 	</div> 
 
 	<ul id="links">
@@ -105,16 +117,15 @@
 	</div>
 	
 	<!-- SCRIPT -->
-	<script src="http://yui.yahooapis.com/3.4.1/build/yui/yui-min.js"></script>
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.0/jquery.min.js?ver=1.4.0"></script>
 
-	<script src="http://yui.yahooapis.com/3.5.1/build/yui/yui-min.js"></script>
+	<script src="http://yui.yahooapis.com/3.6.0pr3/build/yui/yui-min.js"></script>
 	<script type="text/javascript" src="../../../build/gallery-navigate-easy/gallery-navigate-easy-debug.js"></script>
-
+<!-- http://yui.yahooapis.com/combo?3.6.0pr3/build/gallery-navigate-easy/assets/skins/sam/gallery-navigate-easy.css when you set skin to true this is where default is picked from-->
 	<script type="text/javascript">
 	
 	// YUI SANDBOX
-	YUI().use('gallery-navigate-easy','node', 'event', function (Y) {
+	YUI().use('gallery-navigate-easy', function (Y) {
 		//var body = new Y.Nav({node:'body' }).initiateNavigation();
 		//var main = new Y.Nav({node:'#main' }).initiateNavigation();
 		//var sidebar = new Y.Nav({node:'#sidebar' }).initiateNavigation();
@@ -125,14 +136,19 @@
 
 		var registry = new Y.Nav({
 							registry:[
-								{node:'#main' },
-								{node:'#rightbar'},
-								{node:'#links'},
-								{node:'#sidebar'},
+								{node:'#main',rank:2 },
+								{node:'#rightbar',rank:3},
+								{node:'#links',rank:1},
+								{node:'#sidebar',rank:4},
 								{node: '#header'}
-						  ]
+						  ],debug:true
 						}); 
-
+		/*try{
+				Y.one('body').plug(Y.TapToTopPlugin);  
+			} catch(err){
+				Y.log(err);
+			}
+		*/
 
 	});
 	</script>
