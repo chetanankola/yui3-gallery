@@ -75,14 +75,141 @@ Y.extend(Nav, Y.Base, {
 		
 		childIndexInFocus:-1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
 
-		activeLink : null /*holds the current link within a child of the container which is receiving focus*/
+		activeLink : null, /*holds the current link within a child of the container which is receiving focus*/
+ 
+		isHorizontal: false /*mode of alignment of the children: horizontal , or by default it is vertical*/
     },
 
+
+    /**
+    * Tasks MyClass needs to perform during
+    * the init() lifecycle phase
+    * Function for initialization, it defaults registers the node provided in the contructor, during object creation.
+    */
+    initializer: function(cfg){
+		var self = this;
+
+		this.reorderRegistryByRank();
+		//this.set('registry',this.reorderRegistryByRank());
+		this.activateContainerNavigation();
+		this.makeNextContainerNavigable();
+
+		Y.one('body').on( "key",  function( e ) {
+			Y.log('Navigation disabled',"info");
+			self.deactivateAllNavigation();
+		},KEY_TO_DISABLE_NAVIGATION);
+
+		Y.one('body').on( "key",  function( e ) {
+			Y.log('Navigation enabled',"info");
+			if( self.activateContainerNavigation() ){
+				self.makeNextContainerNavigable( _NEXT );
+			}
+		},KEY_TO_ENABLE_NAVIGATION);
+
+
+		/*
+		Y.one('#tab1').on('click', function(){
+					alert('asdas');
+		});
+		Y.one('#testinputbox').on('key', function( e ){
+			Y.one('#testinputbox').set('value', Math.random()*11);
+		},SHIFT_RIGHT_ARROW);*/
+
+		
+
+    },
+
+    /**
+    * Function that will register a new container-node to the registry
+	* @method register
+	* @protected
+	* @param : object :config{node:string,rank:integer,isHorizontal:boolean}
+	*
+	*/
+	register: function(config){
+		var regEntry = config || {},
+			node = regEntry.node,
+			registry = this.get('registry');
+
+		if(Y.one(node)){
+			Y.log('Registering new container:',"info");
+			Y.log(regEntry,"info");
+			registry[registry.length] =  regEntry;
+			this.reorderRegistryByRank();
+		}else{
+			Y.log('Trying to register a node that doesnt exist', "warn");
+			Y.log('registration of node failed:'+node, "warn");
+			Y.log(regEntry,"warn");
+		}
+	},
+
+    /**
+    * Function that will remove an entry from the registry containing registered containers for navigation
+	* @method deRegister
+	* @protected
+	* @param : object :config{node:string}
+	*
+	*/
+	deRegister: function(config){
+		var regEntry = config || {},
+			nodeId = regEntry.node,
+			registry = this.get('registry'),
+			node = Y.one(nodeId),
+			index = null;
+
+		if( node ){
+			index = this.isNodeInRegistry(nodeId);
+			if( index !== null ){
+				Y.log('De-Registering Container Node:'+nodeId, "info");
+				Y.log(regEntry, "info");
+				registry.splice(index,1);
+				Y.log('after Deregistration: Registry:',"info");
+				this.reorderRegistryByRank();
+			}else{
+				Y.log('de-registration of node failed:index in registry'+index, "warn");
+			}
+		}else{
+			Y.log('invalid node provided for deregistration:'+nodeId, "warn");
+		}
+	},
+
+    /**
+    * Function that will return the index of the registry item if the nodeId exists in the registry
+	* @method isNodeInRegistry
+	* @protected
+	* @param : object :config{node:string}
+	* @return : index if nodeId exists inside registry else returns null if not found in registry
+	*
+	*/
+	isNodeInRegistry: function(nodeId){
+		var i = 0,
+		registry = this.get('registry'),
+		len = registry.length;
+		
+		for( i=0; i<len; i++ ){
+			if( nodeId === registry[i].node ){
+				return i;
+			}
+		}
+		return null;
+	},
+
+    /**
+    * Function that will reorder  and updates the registry by Rank provided with the node
+	* @method reorderRegistryByRank
+	* @protected
+	* @param
+	*
+	*/
     reorderRegistryByRank:function(){
 		var registry = this.get('registry'),
 			len = registry.length,
 			newregistry = [],
 			rank,j,i;
+
+			Y.log('Reordering Registry',"info");
+			Y.log('unordered Registry:', "info");
+			Y.log(registry, "info");
 
 			for(i=0;i<len;i++){
 				newregistry[i] = null;
@@ -95,7 +222,8 @@ Y.extend(Nav, Y.Base, {
 				rank = registry[i].rank;
 				if(rank && rank>0 && rank<=len){
 					if(newregistry[rank-1]!==null){
-						Y.log('repeated rank,making it null to resolve ambiguity'+registry[i]);
+						Y.log('repeated rank,making it null to resolve ambiguity', "warn");
+						Y.log(registry[i], "warn");
 						registry[i].rank = null;
 					}else{
 						newregistry[rank-1] = registry[i];
@@ -111,38 +239,13 @@ Y.extend(Nav, Y.Base, {
 						j++;
 					}
 					newregistry[j] = registry[i];
+					newregistry[j].rank = j+1; //update the null or invalid rank now
 				}
 			}
-
-			Y.log(newregistry);
-			return newregistry;
-    },
-
-    /**
-    * Tasks MyClass needs to perform during
-    * the init() lifecycle phase
-    * Function for initialization, it defaults registers the node provided in the contructor, during object creation.
-    */
-    initializer: function(cfg){
-		var self = this;
-
-		this.set('registry',this.reorderRegistryByRank());
-		this.activateContainerNavigation();
-		this.makeNextContainerNavigable();
-
-		Y.one('body').on("key",  function(e) {
-			Y.log("============================");
-			Y.log('Navigation disabled');
-			self.deactivateAllNavigation();
-		},KEY_TO_DISABLE_NAVIGATION);
-
-		Y.one('body').on("key",  function(e) {
-			Y.log("============================");
-			Y.log('Navigation enabled');
-			if(self.activateContainerNavigation()){
-				self.makeNextContainerNavigable(_NEXT);
-			}
-		},KEY_TO_ENABLE_NAVIGATION);
+			Y.log('reordered Registry:', "info");
+			Y.log(newregistry, "info");
+			this.set('registry',newregistry);
+			//return newregistry;
     },
 
     /**
@@ -194,16 +297,25 @@ Y.extend(Nav, Y.Base, {
 	* @param
 	*
 	*/
-    deactivateContainerNavigation:function(){
-		if(Y.ContainerSubscr){
-			Y.log("detaching  subscriptions to navigate across container");
+    deactivateContainerNavigation: function(){
 
-			for(var subscription in Y.ContainerSubscr){
-				Y.log('detaching subscription:'+subscription);
-				Y.ContainerSubscr[subscription].detach();
+		var subscription,
+			ContainerSubscr = Y.ContainerSubscr;
+
+		if( ContainerSubscr ){
+	
+			Y.log("detaching  subscriptions to navigate across container","info");
+			for( subscription in ContainerSubscr ){
+				if (ContainerSubscr.hasOwnProperty( subscription )) {
+					Y.log('detaching subscription:'+subscription,"info");
+					ContainerSubscr[subscription].detach();
+				}
 			}
 			delete Y.ContainerSubscr;
+		}else{
+			Y.log('Trying to deactivate container when there are no subscriptions yet', "warn");
 		}
+
 		this.set('activeRegistryIndex',null);
     },
 
@@ -219,16 +331,21 @@ Y.extend(Nav, Y.Base, {
 
 		var registry = this.get('registry'),
 		
-			index;
+			index,
+
+			node,
+
+			isHorizontal = false;
 		
 		if( registry.length > 0 ){
 			index = this.getNextRegistryIndex( shiftRight );
-			if( index!== null && registry[index] ){
-				var node = Y.one( registry[index].node );
+			if( index !== null && registry[index] ){
 
+				node = Y.one( registry[index].node );
 				if( node ){
+					isHorizontal = registry[index].isHorizontal || false;
 					this.deactivateRegisteredContainer();
-					this.registerContainer(node,(index+1)); //+1 , since rank starts from 1 to length of registry
+					this.registerContainer(node,(index+1),isHorizontal); //+1 , since rank starts from 1 to length of registry
 					this.initiateNavigation();
 				} else {
 					this.deactivateRegisteredContainer();
@@ -295,13 +412,16 @@ Y.extend(Nav, Y.Base, {
 	* @method registerContainer
 	* @protected
 	* @param : {Node} node (Container to be scanned for its children )
+    * @param2 {Rank} integer [1-maxlenofregistry]
+    * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
+
 	*/
-    registerContainer: function(node,rank){
+    registerContainer: function(node,rank,isHorizontal){
 
 		if(node){
 			Y.log('activating container for navigation. Node:#'+node.generateID(),"info");
 			Y.log(node, "info");
-			this.updateChildren(node,rank); //will update node-container.children as array
+			this.updateChildren(node,rank,isHorizontal); //will update node-container.children as array
 			Y.log('Navigable Container Object:', "info");
 			Y.log(this.container, "info");
 			Y.log('container is ready for navigation', "info");
@@ -313,13 +433,15 @@ Y.extend(Nav, Y.Base, {
     /**
     * @method updateChildren
 	* @protected
-    * @param {Node} node  String representing the navigable containers id.
+    * @param1 {Node} node  String representing the navigable containers id.
+    * @param2 {Rank} integer [1-maxlenofregistry]
+    * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
     * register the container that needs navigation
     * updates the container-object:
     *	- gets all the children of the @param node, and puts them in an array.
     *	- updates the container id if it has one else generates a dummy one.
     */
-    updateChildren: function(node,rank){
+    updateChildren: function(node,rank,isHorizontal){
 		var childrenObj = node.all('> *'),
 
 			children = [],
@@ -330,6 +452,7 @@ Y.extend(Nav, Y.Base, {
 			children[i] = child;
 		});
 
+		container.isHorizontal = isHorizontal || false;
 		container.rank = rank;
 		container.node = node;
 		container.children = children;
@@ -366,15 +489,6 @@ Y.extend(Nav, Y.Base, {
 		this.resetContainer();
     },
 
-
-
-
-
-
-
-
-
-
 	/**
     * @method removeHighlightonContainer
 	* @protected
@@ -384,8 +498,8 @@ Y.extend(Nav, Y.Base, {
 	*/
     removeHighlightonContainer: function(){
 		var container = this.container;
-		if(container && container.node){
-			container.node.removeClass(_CONTAINER_HIGHLIGHT_CLASS);
+		if( container && container.node ){
+			container.node.removeClass( _CONTAINER_HIGHLIGHT_CLASS );
 		}
     },
 
@@ -400,8 +514,8 @@ Y.extend(Nav, Y.Base, {
 		var container = this.container,
 			index = container.childIndexInFocus;
 
-		if( index!==null && index!==-1 ){
-			container.children[index].removeClass(_CHILD_HIGHLIGHT_CLASS);
+		if( index !== null && index !== -1 ){
+			container.children[index].removeClass( _CHILD_HIGHLIGHT_CLASS );
 		}
     },
 
@@ -427,11 +541,12 @@ Y.extend(Nav, Y.Base, {
     resetContainer: function(){
 
 		this.container = {
-			rank:null, /*Integer:[1,lenofregistry]*/
-			node:null, /*DOM elem*/
-			containerId:null, /*String*/
-			children:[], /*array type*/
-			childIndexInFocus:-1/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
+			rank: null, /*Integer:[1,lenofregistry]*/
+			node: null, /*DOM elem*/
+			containerId: null, /*String*/
+			children: [], /*array type*/
+			childIndexInFocus: -1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
+			isHorizontal: false
 		};
 		this.wasLastChild = false;
     },
@@ -444,7 +559,7 @@ Y.extend(Nav, Y.Base, {
 	*
 	*/
     killAllChildNavigationSubscription:function() {
-		if(Y.BodySubscr){
+		if( Y.BodySubscr ){
 			this.detachAllChildSubscriptions();
 		}
     },
@@ -455,7 +570,7 @@ Y.extend(Nav, Y.Base, {
 	* Splash a message onto the container: specifically its rank
 	*
 	*/
-	splash:function(msg,position){
+	splash:function( msg, position ){
 		
 		var ele = '<h1 style="font-size:3em;color:#444;position:absolute;-webkit-transform: rotate(-30deg);" id="_splash">'+msg+'</h1>',
 
@@ -469,14 +584,14 @@ Y.extend(Nav, Y.Base, {
 		Y.log('splash coordinates:'+position, "info");
 		position[0] = position[0]-50;
 		position[1] = position[1]-50;
-		splashnode = Y.one('#_splash'),
+		splashnode = Y.one('#_splash');
 		body = Y.one('body');
-		if(splashnode){
+		if( splashnode ){
 			splashnode.remove();
 		}
 
 		splash = Y.DOM.create(ele);//.getDOMNode;
-		body.append(splash);
+		body.append( splash );
 		splashnode = Y.one('#_splash').setXY(position).addClass('cramDownOpacity');
 	},
 
@@ -487,27 +602,35 @@ Y.extend(Nav, Y.Base, {
 	* @param
 	*
 	*/
-    activateRegisteredContainer:function(){
+    activateRegisteredContainer: function(){
 		var container = this.container,xy;
-		if(container && container.node){
-			container.node.addClass(_CONTAINER_HIGHLIGHT_CLASS);
+
+		if( container && container.node ){
+			container.node.addClass( _CONTAINER_HIGHLIGHT_CLASS );
 			Y.log('rank of the container:'+container.rank);
-			
+			Y.log('Container is horizontal:'+container.isHorizontal);
 			/*splash coordinates*/
-			if(this.get('debug')){
+			if( this.get('debug') ){
 				xy = container.node.getXY();
-				this.splash('Rank:'+container.rank+'<br>id:'+container.node.generateID(),xy);
-				//////////////////////
+				this.splash('Rank:'+container.rank+'<br>id:'+container.node.generateID()+'<br>isHorizontal:'+container.isHorizontal,xy);
 			}
 		}
 		
 		/** on KeyDown **/
 		Y.BodySubscr = {};
 		Y.log('attaching new subscription for child navigation',"info");
-		Y.BodySubscr.keydown = Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
-		/** ON KeyUp **/
-		Y.BodySubscr.keyup = Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
-		Y.one('body').simulate("keydown", { keyCode: 40 });
+		if( container.isHorizontal ){
+			Y.BodySubscr.keyright = Y.one('body').on('right',Y.bind(this.onMyKeyDown,this));
+			/** ON KeyRight **/
+			Y.BodySubscr.keyleft = Y.one('body').on('left',Y.bind(this.onMyKeyUp,this));
+			Y.one('body').simulate("keydown", { keyCode: 39 });
+		} else {
+			Y.BodySubscr.keydown = Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
+			/** ON KeyUp **/
+			Y.BodySubscr.keyup = Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
+			Y.one('body').simulate("keydown", { keyCode: 40 });
+		}
+
     },
 
 	/**
@@ -520,13 +643,16 @@ Y.extend(Nav, Y.Base, {
 	*/
     detachAllChildSubscriptions: function() {
 		
-		var BodySubscr = Y.BodySubscr;
+		var BodySubscr = Y.BodySubscr,
+			subscription;
 
 		if(BodySubscr){
-			Y.log("detaching existing subscriptions");
-			for(var subscription in BodySubscr){
-				Y.log('detaching subscription:'+subscription, "info");
-				BodySubscr[subscription].detach();
+			Y.log("detaching existing subscriptions","info");
+			for( subscription in BodySubscr ){
+				if ( BodySubscr.hasOwnProperty( subscription ) ) {
+					Y.log('detaching subscription:'+subscription, "info");
+					BodySubscr[subscription].detach();
+				}
 			}
 			delete Y.BodySubscr;
 		}
@@ -546,7 +672,7 @@ Y.extend(Nav, Y.Base, {
 		this.wasLastChild = false; //for handling some edge case where on down key we navigate back to 1st child.
 		if( container ){
 			e.preventDefault();
-			childIndexInFocus = container.childIndexInFocus,
+			childIndexInFocus = container.childIndexInFocus;
 			newindex = this.getNextIndex(childIndexInFocus);
 			Y.log('on down-arrow-Key press:child index infocus:'+newindex, "info");
 			container.childIndexInFocus=newindex;
@@ -568,7 +694,7 @@ Y.extend(Nav, Y.Base, {
 
 		if( container ){
 			e.preventDefault();
-			childIndexInFocus = container.childIndexInFocus,
+			childIndexInFocus = container.childIndexInFocus;
 			newindex = this.getPreviousIndex(childIndexInFocus);
 			Y.log('onkeyup:Infocus:'+newindex);
 			this.bringChildtoFocus(container.children[newindex]);
@@ -598,6 +724,7 @@ Y.extend(Nav, Y.Base, {
 	*
 	*/
     animateScroll: function(y){
+
 		this.anim = new Y.Anim({
           node: 'window',
           from: {
@@ -612,7 +739,6 @@ Y.extend(Nav, Y.Base, {
 		/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
 		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
 		*/
-       
     },
 
 	/**
@@ -645,14 +771,17 @@ Y.extend(Nav, Y.Base, {
 	getPreviousIndex: function(childIndexInFocus) {
 		var container = this.container,
 			numofChildren = container.children.length;
-		if(childIndexInFocus>=0){
+
+		if( childIndexInFocus >= 0 ){
 			container.children[childIndexInFocus].removeClass(_CHILD_HIGHLIGHT_CLASS);
 		}
-		if(childIndexInFocus===0) {
-			childIndexInFocus=numofChildren;
+
+		if( childIndexInFocus === 0 ) {
+			childIndexInFocus = numofChildren;
 		}
+
 		childIndexInFocus--;
-		if(childIndexInFocus<0) {
+		if( childIndexInFocus < 0 ) {
 			childIndexInFocus=0;
 		}
 		return childIndexInFocus;
@@ -663,23 +792,23 @@ Y.extend(Nav, Y.Base, {
     * @param Node: DOM element(child node in focus of the navigable container)
     * @return : Integer:amount to scroll to get the elem under focus to the center
     */
-	scrollToCenter: function(Node){
+	scrollToCenter: function( Node ){
 		var childsY = Node.getY(),
 			childHeight = Node.get('clientHeight'),
 			adjustScroll = childHeight/2,
 			winHeight = Node.get('winHeight'),
 			halfwinheight = winHeight/2;
 
-		if(childHeight>winHeight){
+		if( childHeight > winHeight ){
 			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
 		}
-		if(childsY>halfwinheight){
-			if(this.anim && this.anim.get('running')){
+		if( childsY > halfwinheight ){
+			if( this.anim && this.anim.get('running') ){
 				this.anim.pause();
 			}
 			return childsY-halfwinheight+adjustScroll;
 		}else{
-			Y.log('Elements Y coordinate is less than half the window height',"info");
+			Y.log('Elements Y coordinate is less than half the window height', "info");
 		}
 		return 0;
 	},
@@ -689,13 +818,13 @@ Y.extend(Nav, Y.Base, {
 	* @param: Node, representing the child that should gain focus.
 	*
 	*/
-	bringChildtoFocus:function(childInFocus){
+	bringChildtoFocus: function( childInFocus ){
 		/**related to getting the first link on reaching a child node**/
 		var link = childInFocus.all('a'),
 			linkArr = [],
 			amounttoScroll;
 
-		childInFocus.addClass(_CHILD_HIGHLIGHT_CLASS).focus();
+		childInFocus.addClass( _CHILD_HIGHLIGHT_CLASS ).focus();
 		if( this.activeLink ){
 			this.activeLink.blur();
 		}
@@ -721,17 +850,11 @@ Y.extend(Nav, Y.Base, {
 		if( this.container.childIndexInFocus===0 ){
 			childInFocus.scrollIntoView();
 		}
-		amounttoScroll = this.scrollToCenter(childInFocus);
-		//window.scroll(0,amounttoScroll);
+		amounttoScroll = this.scrollToCenter(childInFocus); //window.scroll(0,amounttoScroll);
 		this.animateScroll(amounttoScroll);
 	}
 
 });
-
-
-
-
-
 
 Y.Nav = Nav;
 

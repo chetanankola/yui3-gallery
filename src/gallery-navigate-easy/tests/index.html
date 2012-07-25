@@ -22,6 +22,15 @@
 	<div id="header"> 
 	<h1>{{ JAVASCRIPT AND CSS3 BEST PRACTICES AND PITFALLS }}</h1>
 	</div>	  
+
+	<div id="tab">
+		<ul>
+			<input type="text" id="testinputbox"/>
+			<li><a href='#Tab1' id='tab1'> Disable others</a></li>
+			<li><a href='#Tab2' id='tab2'>Enable others</a> </li>
+
+		</ul>
+	</div>
 	
 	<div id="sidebar"> 
 		<h2> Related Search </h2>
@@ -47,43 +56,46 @@
 			</p>
 		</div>
 		<div class="bright"> 
-		<p>1. var keyword is important </p>
+		<p>No matter how many children are there the first link should get the focus</p>
 		
-		<p> really? check
-			<a href="http://bonsaiden.github.com/JavaScript-Garden/">this </a> then  
-			<a href="http://bonsaiden.github.com/JavaScript-Garden/">this </a> then 
+		<p> There are 2 links here : this->
+			<a href="http://search.yahoo.com/">Yahoo</a> and this ->  
+			<a href="http://search.google.com/">Google </a> then 
+			<a href="http://bonsaiden.github.com/JavaScript-Garden/">J-Garden </a> then 
 		</p>
+		<p> Try pressing enter when you are on this div!! it should take you to the right place
 		</div>	
-
-		<div class="bright"> 
-		<p>2. Interpreter always hoists the variable on top so its always good to declare it at the top </p>
-		</div>
-
-		<div class="bright"> 
-		<p>3. Alright Later dudes....</p>
-		</div>
 
 		<div class="bright">
 			<p> 1. Nav.register('#main'), (where #main is the `id of the navigable container`) on doing this, all its first level descendants must be keyboard navigable by up and down key. </p>
-			<p> 2. Only a Special key should trigger this binding and unregister other subscription of key events done via this gallery-navigate-easy (module)</p>
+			<p> 2. Only a Special key should trigger this binding and unregister other subscription of key events done via this gallery-navigate-easy (module)
+				--DONE right now Shift-d disables navigation, Shift-e enables navigation
+			</p>
 		</div>
 		<div class="bright">
-			<p> 3. What if there is a ul with li items inside the nav container. ? </p>
+			<p> 3. What if there is a ul with li items inside the nav container. ? : works!!
+			 </p>
+			 <p> Make sure you register this way: </p>
+			 <p> new Y.Nav({registry:[{node:'#tab ul'}]}); 	</p>
 		</div> 
 		<div class="bright">
-			<p> 4. use Shift-right or shift-left to move thru containers and say if a list has horizontal elements then register them appropriately so that on left and right arrow keys you can move through them. </p>
+			<p> 4. use Shift-right or shift-left to move thru containers  </p>
+			<p> 5. if a list has horizontal elements then register them appropriately so that on left and right arrow keys you can move through them.</p>
+			<p>It can be done as:new Y.Nav({registry:[{node:'#tab ul',isHorizontal:true}]});  </p>
+			<p> Now you can use right and left arrow to move through the horizontal container </p>
 		</div> 
 		<div class="bright">
-			<p>Right now for every child inside a container when gains focus is scanned for links inside and the first link found is given the focus so that on return-key press made to navigate to the link </p>
+			<p>Bigger problem is: what if the child in focus is a button? does it always have to contain some link? No not necessary, if there is a click event attached to the link or even the list containing the link it will work and trigger click event on pressing enter!! pretty obvious.. Try it out by Y.one('#tab1').on('click',function(){alert('s');})  it works</p>
 		</div>
-		<div class="bright">
-			<p>Bigger problem is: what if the item highlighted is a button? does it always have to contain some link? </p>
-		</div>
-		<a class="bright" style="display:block;margin:20px 4% auto;" href="http://google.com">GOOGLE</a>
+		<a class="bright" style="display:block;margin:20px 4% auto;" href="http://google.com">Single child which is a link itself!!</a>
 
-		<div class="bright"><p>Specify an order in which the navigation should happen either directly in the node as a tag or in teh config</p></div>
+		<div class="bright"><p>Specify an order in which the navigation should happen either directly in the node as a tag or in the config: Done by providing rank in config: node:'#asdasd',rank:3 (if no rank is provided then it defaults and puts it in random empty places with no rank assigned.</p></div>
+
 		<div class="bright"><p> be able to register a new node without specifying it in the config</p></div>
-		<div class="bright"><p> be able to set css for highlights, outline and containerhihglights when registering itself and not in seperate file</p></div>
+		
+
+
+
 		<div class="bright">
 			<p> Removing default outline when a link is active,focused or hovered, <br>
 				a {
@@ -93,28 +105,38 @@
 				a:hover,a:focus,a:active { <br>
 					outline:#777 dotted 4px;<br>
 				} 
-</p>
+			</p>
 		</div>
 
-		<div class="bright"> <p> how about be able to browse through every link within the child!! </p> </div>
+		<div class="bright"> <p> how about be able to browse through every link within the child!! (JUst use Tab)</p> </div>
 
-		<div class="bright"> <p> Put key-registration description eg:shift and -> = navigate between containers in config</p> </div>
+		<div class="bright"> <p> Put key-registration description eg:shift and -> = navigate between containers in config so that this is added to aria-descr(so that its spoken out in screen reader.</p> </div>
 
 		<div class="bright"> <p>disabling css should still show the right titles.. and then add aria for screen reader help and then add javascript for navigation!! </p> </div>
 
+		<div class="bright"> <p> (have to see how to do this) Mention the div ids on focus of which navigation events are disabled so that it doesnt hamper with other custom events for eg: search direct events: you would not want the right arrow to move through the container when you are inside search direct </p> </div>
 
-		<div class="bright"> <p> horizontal lists should be left-right arrow navigable </p> </div>
+		<div class="bright"><p> be able to set css for highlights, outline and containerhihglights when registering itself and not in seperate file: I Guess this is done using Yui3 skin that way a default css always remains until someone overrides it..
+		but yeah this is also needed!!</p></div>
+
+		<div class="bright"> <p> how about slideshow stuff with horizontal scrolling!!!  </p> </div>		
+
 	</div> 
+
+
+
+ 
 
 	<ul id="links">
 		<li> `Every time this happens its a FAIL` </li>
 		<li> I mean Epic Fail! </li>
 	</ul>
 
-	
 	<div id="footer">
 	<h3>Copyright © 2011-2012 Chetan Ankola. No Rights! reserved. meh! blah bli blu- Privacy Policy - Terms of Service</h3>
 	</div>
+
+
 	
 	<!-- SCRIPT -->
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.0/jquery.min.js?ver=1.4.0"></script>
@@ -134,17 +156,39 @@
 		//Y.Nav.splash('I was splashed by splash function - Y.nav.splash');
 		//Y.Nav.attachNavigation('main');
 
-		var registry = new Y.Nav({
+		var Nav = new Y.Nav({
 							registry:[
-								{node:'#main',rank:2 },
+								{node:'#main' },
 								{node:'#rightbar',rank:3},
-								{node:'#links',rank:1},
-								{node:'#sidebar',rank:4},
-								{node: '#header'}
+								{node:'#links',rank:4},
+								{node:'#sidebar',rank:1},
+								{node:'#tab ul',isHorizontal:true}
 						  ],debug:true
 						}); 
+
+		Nav.register({node:'#header'});
+
+		Y.one('#tab1').on('click',function(){
+			Nav.deRegister({node:'#main'});
+			Nav.deRegister({node:'#rightbar'});
+			Nav.deRegister({node:'#links'});
+			Nav.deRegister({node:'#header'});
+			Nav.deRegister({node:'#sidebar'});
+			Nav.splash('Disabled all other guys except me!!! for navigation lol!',[100,100]);
+		})
+
+		Y.one('#tab2').on('click',function(){
+			Nav.register({node:'#main'});
+			Nav.register({node:'#rightbar'});
+			Nav.register({node:'#links'});
+			Nav.register({node:'#header'});
+			Nav.register({node:'#sidebar'});
+
+			Nav.splash('Enabled all other guys for navigation',[100,100]);
+		})		
+		
 		/*try{
-				Y.one('body').plug(Y.TapToTopPlugin);  
+				Y.one('body').plug(Y.TapToTopPlugin	);  
 			} catch(err){
 				Y.log(err);
 			}

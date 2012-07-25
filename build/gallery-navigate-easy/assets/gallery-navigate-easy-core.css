@@ -96,6 +96,9 @@ font-weight:strong;
 text-shadow: 0px 1px 0 #eee;
 }
 
+
+
+
 #links li {
 	margin:20px 4% auto;
 	position:relative;
@@ -133,7 +136,7 @@ text-shadow: 0px 1px 0 #eee;
 
 .containerhighlight {
 	border:4px solid #ccc !important;
-	box-shadow:3px 3px 17px rgba(0,0,0,.4) !important;
+	box-shadow:0 0 7px rgba(0,0,0,.4) !important;
 	-webkit-transition:box-shadow 0.3s !important;
 }
 
@@ -142,9 +145,9 @@ text-shadow: 0px 1px 0 #eee;
 	background:#dfdfdf !important;
 	color:#444 !important;
 	font-weight:strong !important;
-	box-shadow:0 10px 7px rgba(0,0,0,.4) !important;
-	-webkit-transition:all .4s ease-in;	
-}	
+	box-shadow:0 0px 8px rgba(0,0,0,.6) !important;
+	-webkit-transition:all .2s ease-in;	
+}
 
 .highlight {
 	border:1px solid #aaa !important;
@@ -163,13 +166,63 @@ a {
 	outline:0
 }
 
-a:hover,a:focus,a:active {
-	outline:#777 dotted 2px;
+a:focus,a:active {
+	outline:#777 dotted 1px;
     /*box-shadow: 0 0 5px rgba(0, 0, 255, 1);
     -webkit-box-shadow: 0 0 5px rgba(0, 0, 255, 1); 
     -moz-box-shadow: 0 0 5px rgba(0, 0, 255, 1);
     border:1px solid rgba(0,0,255, 0.8); */
 }
+a:hover {
+    outline:none;
+}
+
+#tab {
+	margin:20px 10% auto;
+	padding:0;
+}
+#tab ul{
+    margin:0 auto;
+    padding:0;
+}
+#tab li{
+	margin:14px 13px;
+    text-align:center;
+    line-height:3em;
+    border:1px solid #ccc;
+	list-style: none;
+	display: inline-block;
+	list-style-type: none;
+    background:#ccc;
+    border-radius:8px;
+    padding:4px;
+
+    
+}
+#tab a{
+	text-decoration:none;
+    font-weight: bold;
+    color: #555;
+    font-size: 2em;
+    text-shadow: 0px 1px 0 white;
+    vertical-align: middle;
+    padding-left:10px;
+    padding-right:10px;
+    padding-top:5px;
+    padding-bottom:5px;
+}
+
+#tab input {
+	margin:14px 13px;
+	height: 30px;
+	width: 301px;
+	border-radius: 9px;
+	padding:3px;
+
+
+}
+
+
 
 .bright {
 margin:20px 4% auto;
