@@ -28,7 +28,8 @@
 			<input type="text" id="testinputbox"/>
 			<li><a href='#Tab1' id='tab1'> Disable others</a></li>
 			<li><a href='#Tab2' id='tab2'>Enable others</a> </li>
-
+			<li><a href='#enable' id='enable'>Enable Nav</a> </li>
+			<li><a href='#disable' id='disable'>Disable Nav</a> </li>
 		</ul>
 	</div>
 	
@@ -119,7 +120,15 @@
 		<div class="bright"><p> be able to set css for highlights, outline and containerhihglights when registering itself and not in seperate file: I Guess this is done using Yui3 skin that way a default css always remains until someone overrides it..
 		but yeah this is also needed!!</p></div>
 
-		<div class="bright"> <p> how about slideshow stuff with horizontal scrolling!!!  </p> </div>		
+		<div class="bright"> <p> how about slideshow stuff with horizontal scrolling!!!  </p> </div>	
+
+		<div class="bright"> <p> fix issues where your events up-down clashes with up-down events in the code say you are inside calendar widget. </p> </div>			
+
+
+		<div class="bright"> <p> CUSTOM CSS- for highlighting is extremely important!! </p> </div>
+		<div class="bright"> <p> provide a flag for the container node in the registry to specify if all the children needs to be center-viewed or scrolled-top for eg: scroll-top is a awesome usecase for "slideshow"</p> </div>
+		<div class="bright"> <p> Also think about integrating this with carousal where you can move to next image by left and right arrow.</p> </div>
+
 
 	</div> 
 
@@ -143,6 +152,7 @@
 
 	<script src="http://yui.yahooapis.com/3.6.0pr3/build/yui/yui-min.js"></script>
 	<script type="text/javascript" src="../../../build/gallery-navigate-easy/gallery-navigate-easy-debug.js"></script>
+
 <!-- http://yui.yahooapis.com/combo?3.6.0pr3/build/gallery-navigate-easy/assets/skins/sam/gallery-navigate-easy.css when you set skin to true this is where default is picked from-->
 	<script type="text/javascript">
 	
@@ -185,8 +195,14 @@
 			Nav.register({node:'#sidebar'});
 
 			Nav.splash('Enabled all other guys for navigation',[100,100]);
-		})		
-		
+		})	
+
+		Y.one('#disable').on('click',function(){
+			Nav.disableAllNavigation();
+		})	
+		Y.one('#enable').on('click',function(){
+			Nav.enableAllNavigation();
+		})			
 		/*try{
 				Y.one('body').plug(Y.TapToTopPlugin	);  
 			} catch(err){

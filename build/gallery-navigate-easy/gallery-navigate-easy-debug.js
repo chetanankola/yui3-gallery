@@ -24,6 +24,8 @@ var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	_CONTAINER_HIGHLIGHT_CLASS = 'containerhighlight',
 
+	SMOOTH_SCROLL = true,
+
 	Nav = function(config){
 		Nav.superclass.constructor.apply(this, arguments);
 	};
@@ -96,27 +98,38 @@ Y.extend(Nav, Y.Base, {
 
 		Y.one('body').on( "key",  function( e ) {
 			Y.log('Navigation disabled',"info");
-			self.deactivateAllNavigation();
+			self.disableAllNavigation();
 		},KEY_TO_DISABLE_NAVIGATION);
 
 		Y.one('body').on( "key",  function( e ) {
 			Y.log('Navigation enabled',"info");
-			if( self.activateContainerNavigation() ){
-				self.makeNextContainerNavigable( _NEXT );
-			}
+			self.enableAllNavigation();
 		},KEY_TO_ENABLE_NAVIGATION);
+    },
 
+   /**
+    * Function that enables all navigation on the page using keyboard
+	* @method enableAllNavigation
+	* @protected
+	* @param : object :config{node:string,rank:integer,isHorizontal:boolean}
+	*
+	*/
+    enableAllNavigation: function(){
+		if( this.activateContainerNavigation() ){
+				this.makeNextContainerNavigable( _NEXT );
+		}
+    },
 
-		/*
-		Y.one('#tab1').on('click', function(){
-					alert('asdas');
-		});
-		Y.one('#testinputbox').on('key', function( e ){
-			Y.one('#testinputbox').set('value', Math.random()*11);
-		},SHIFT_RIGHT_ARROW);*/
-
-		
-
+    /**
+    * Function that disables all navigation on the page using keyboard
+	* @method disableAllNavigation
+	* @protected
+	* @param
+	*
+	*/
+    disableAllNavigation:function(){
+		this.deactivateRegisteredContainer(); //will also disable child events
+		this.deactivateContainerNavigation();
     },
 
     /**
@@ -253,7 +266,7 @@ Y.extend(Nav, Y.Base, {
 	* @method activateContainerNavigation
 	* @protected
 	* @param
-	*
+	* @return true of activation was successful else returns false.
 	*/
     activateContainerNavigation:function(){
 		var self = this;
@@ -278,17 +291,6 @@ Y.extend(Nav, Y.Base, {
 		return true;
     },
 
-    /**
-    * Function that disables all navigation on the page using keyboard
-	* @method deactivateContainerNavigation
-	* @protected
-	* @param
-	*
-	*/
-    deactivateAllNavigation:function(){
-		this.deactivateRegisteredContainer(); //will also disable child events
-		this.deactivateContainerNavigation();
-    },
 
     /**
     * Function that detaches all subscriptions for moving across containers
@@ -498,10 +500,26 @@ Y.extend(Nav, Y.Base, {
 	*/
     removeHighlightonContainer: function(){
 		var container = this.container;
+
 		if( container && container.node ){
 			container.node.removeClass( _CONTAINER_HIGHLIGHT_CLASS );
 		}
     },
+
+	/**
+    * @method highlightContainer
+	* @protected
+	* ADD CSS highlight on the current navigable container
+	* @param
+	*
+	*/
+	highlightContainer: function () {
+		var container = this.container;
+
+		if(container && container.node){
+			container.node.addClass( _CONTAINER_HIGHLIGHT_CLASS );
+		}
+	},
 
 	/**
     * @method removeHighlightonCurrentChild
@@ -570,20 +588,19 @@ Y.extend(Nav, Y.Base, {
 	* Splash a message onto the container: specifically its rank
 	*
 	*/
-	splash:function( msg, position ){
+	splash:function( msg, pos ){
 		
-		var ele = '<h1 style="font-size:3em;color:#444;position:absolute;-webkit-transform: rotate(-30deg);" id="_splash">'+msg+'</h1>',
+		var ele = '<h1 style="font-size:3em;color:#444;position:fixed;-webkit-transform: rotate(-10deg);" id="_splash">'+msg+'</h1>',
 
 			splashnode,
 
 			body,
 
-			splash;
+			splash,
 
-		Y.log('splash:'+msg, "info");
-		Y.log('splash coordinates:'+position, "info");
-		position[0] = position[0]-50;
-		position[1] = position[1]-50;
+			position = pos || [0,0];
+
+
 		splashnode = Y.one('#_splash');
 		body = Y.one('body');
 		if( splashnode ){
@@ -603,15 +620,21 @@ Y.extend(Nav, Y.Base, {
 	*
 	*/
     activateRegisteredContainer: function(){
-		var container = this.container,xy;
+		var container = this.container,
+			xy;
 
 		if( container && container.node ){
-			container.node.addClass( _CONTAINER_HIGHLIGHT_CLASS );
+			this.highlightContainer();
 			Y.log('rank of the container:'+container.rank);
 			Y.log('Container is horizontal:'+container.isHorizontal);
 			/*splash coordinates*/
 			if( this.get('debug') ){
-				xy = container.node.getXY();
+				//xy = container.node.getXY();
+				//xy[0] = xy[0] +50;
+				//xy[1] = xy[1] -50;
+				xy = [200,200];
+				Y.log('Splash coordinates',"info");
+				Y.log( xy );
 				this.splash('Rank:'+container.rank+'<br>id:'+container.node.generateID()+'<br>isHorizontal:'+container.isHorizontal,xy);
 			}
 		}
@@ -715,31 +738,13 @@ Y.extend(Nav, Y.Base, {
 		Defined in node/js/node-event.js:69
 		Removes event listeners from the node and (optionally) its subtree
 		*/
-		delete this.anim;
+		if(this.anim){
+			delete this.anim;
+		}
+		
     },
 
-	/**
-	* Function to enable smooth scrolling
-	* @param: y - integer, that represents the calculated height by which scroll should happen on Y axis on window object
-	*
-	*/
-    animateScroll: function(y){
 
-		this.anim = new Y.Anim({
-          node: 'window',
-          from: {
-			scroll: [Y.DOM.docScrollX(),Y.DOM.docScrollY()]
-          },
-          to: {
-            scroll : [Y.DOM.docScrollX(),y]
-          },
-          duration: 0.2,
-          easing:  Y.Easing.easeNone
-        }).run();
-		/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
-		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
-		*/
-    },
 
 	/**
 	* Function to get the next child index on key down event.
@@ -787,6 +792,38 @@ Y.extend(Nav, Y.Base, {
 		return childIndexInFocus;
 	},
 
+	/**
+	* Function to scroll the window by a certain y value
+	* @param: y - integer, that represents the calculated height by which scroll should happen on Y axis on window object
+	*
+	*/
+    _scroll: function(y){
+
+
+		if(!SMOOTH_SCROLL) {
+			window.scroll(0,y);
+		} else {
+
+			if(this.anim){
+				delete this.anim;
+			}
+			this.anim = new Y.Anim({
+				node: 'window',
+				from: {
+					scroll: [Y.DOM.docScrollX(),Y.DOM.docScrollY()]
+				},
+				to: {
+						scroll : [Y.DOM.docScrollX(),y]
+					},
+					duration: 0.2,
+					easing:  Y.Easing.easeNone
+			}).run();
+
+		}
+		/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
+		*/
+    },
     /**
     * Function to adjust scrolling and centering the child element which is in focus
     * @param Node: DOM element(child node in focus of the navigable container)
@@ -797,7 +834,8 @@ Y.extend(Nav, Y.Base, {
 			childHeight = Node.get('clientHeight'),
 			adjustScroll = childHeight/2,
 			winHeight = Node.get('winHeight'),
-			halfwinheight = winHeight/2;
+			halfwinheight = winHeight/2,
+			amounttoScroll = 0;
 
 		if( childHeight > winHeight ){
 			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
@@ -806,11 +844,22 @@ Y.extend(Nav, Y.Base, {
 			if( this.anim && this.anim.get('running') ){
 				this.anim.pause();
 			}
-			return childsY-halfwinheight+adjustScroll;
+			amounttoScroll = childsY-halfwinheight+adjustScroll;
 		}else{
 			Y.log('Elements Y coordinate is less than half the window height', "info");
 		}
-		return 0;
+
+
+		if(Y.DOM.inViewportRegion(Y.Node.getDOMNode(Node),true,null)){
+			Y.log('No Scroll', "warn");
+			return null;
+		}else{
+			Y.log('amount to scroll:'+amounttoScroll, "warn");
+			Node.scrollIntoView();
+			return amounttoScroll;
+		}
+		
+		return amounttoScroll;
 	},
 
 	/**
@@ -822,7 +871,8 @@ Y.extend(Nav, Y.Base, {
 		/**related to getting the first link on reaching a child node**/
 		var link = childInFocus.all('a'),
 			linkArr = [],
-			amounttoScroll;
+			amounttoScroll,
+			debug_alldim={};
 
 		childInFocus.addClass( _CHILD_HIGHLIGHT_CLASS ).focus();
 		if( this.activeLink ){
@@ -842,16 +892,28 @@ Y.extend(Nav, Y.Base, {
 			this.anim.pause();
 		}
 		
+		/** since this is now taken care in scrolltoCenter Function
 		if( this.wasLastChild ){
 			Y.log('last child', "info");   //this needs to be outside since both up and down needs this
-			childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
+			//childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
 		}
 
 		if( this.container.childIndexInFocus===0 ){
-			childInFocus.scrollIntoView();
+			//childInFocus.scrollIntoView();
 		}
+		**/
 		amounttoScroll = this.scrollToCenter(childInFocus); //window.scroll(0,amounttoScroll);
-		this.animateScroll(amounttoScroll);
+		if(amounttoScroll){
+			debug_alldim ={
+				childsY : childInFocus.getY(),
+				childHeight : childInFocus.get('clientHeight'),
+				winHeight : childInFocus.get('winHeight'),
+				currentScrollY: Y.DOM.docScrollY(),
+				amountgoingtoScroll:amounttoScroll
+			};
+			Y.log(debug_alldim, "scroll");
+			this._scroll(amounttoScroll,childInFocus.getY);
+		}
 	}
 
 });
