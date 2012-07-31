@@ -168,12 +168,17 @@
 
 		var Nav = new Y.Nav({
 							registry:[
-								{node:'#main' },
+								{node:'#main',pullToTop:true },
 								{node:'#rightbar',rank:3},
 								{node:'#links',rank:4},
 								{node:'#sidebar',rank:1},
 								{node:'#tab ul',isHorizontal:true}
-						  ],debug:true
+						  ],
+
+						  debug:true,
+
+						  styleContainer:true, /*optional*/
+
 						}); 
 
 		Nav.register({node:'#header'});

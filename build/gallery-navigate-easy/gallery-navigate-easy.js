@@ -1,5 +1,6 @@
 YUI.add('gallery-navigate-easy', function(Y) {
 
+
 /**
  * Provides easy and custom navigation across various dom elements using keyboard.
  *
@@ -26,6 +27,13 @@ var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	SMOOTH_SCROLL = true,
 
+	DURATION_OF_SMOOTHSCROLL = 0.3,
+
+	ANIMTYPE_FOR_SMOOTHSCROLL = Y.Easing.easeIn,
+
+	/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
+		*/
 	Nav = function(config){
 		Nav.superclass.constructor.apply(this, arguments);
 	};
@@ -53,6 +61,10 @@ Nav.ATTRS = {
  
     debug:{
 		value: null
+    },
+
+	styleContainer: {
+		value: false
     }
 
 };
@@ -79,7 +91,9 @@ Y.extend(Nav, Y.Base, {
 
 		activeLink : null, /*holds the current link within a child of the container which is receiving focus*/
  
-		isHorizontal: false /*mode of alignment of the children: horizontal , or by default it is vertical*/
+		isHorizontal: false, /*mode of alignment of the children: horizontal , or by default it is vertical*/
+
+		pullToTop: false /*meant for slideshow kind of containers where you want child elements to scroll to top than being centered*/
     },
 
 
@@ -290,7 +304,6 @@ Y.extend(Nav, Y.Base, {
 				}
 			}
 			delete Y.ContainerSubscr;
-		}else{
 		}
 
 		this.set('activeRegistryIndex',null);
@@ -312,7 +325,9 @@ Y.extend(Nav, Y.Base, {
 
 			node,
 
-			isHorizontal = false;
+			isHorizontal = false,
+
+			pullToTop = false;
 		
 		if( registry.length > 0 ){
 			index = this.getNextRegistryIndex( shiftRight );
@@ -321,14 +336,14 @@ Y.extend(Nav, Y.Base, {
 				node = Y.one( registry[index].node );
 				if( node ){
 					isHorizontal = registry[index].isHorizontal || false;
+					pullToTop = registry[index].pullToTop || false;
 					this.deactivateRegisteredContainer();
-					this.registerContainer(node,(index+1),isHorizontal); //+1 , since rank starts from 1 to length of registry
+					this.registerContainer(node,(index+1),isHorizontal,pullToTop); //+1 , since rank starts from 1 to length of registry
 					this.initiateNavigation();
 				} else {
 					this.deactivateRegisteredContainer();
 				}
 			}
-		} else {
 		}
     },
 
@@ -385,13 +400,12 @@ Y.extend(Nav, Y.Base, {
 	* @param : {Node} node (Container to be scanned for its children )
     * @param2 {Rank} integer [1-maxlenofregistry]
     * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
-
+	* param4 {pullToTop} Boolean: if true then the child will not be centered instead pulled to the top of the page.
 	*/
-    registerContainer: function(node,rank,isHorizontal){
+    registerContainer: function(node,rank,isHorizontal,pullToTop){
 
 		if(node){
-			this.updateChildren(node,rank,isHorizontal); //will update node-container.children as array
-		}else{
+			this.updateChildren(node,rank,isHorizontal,pullToTop); //will update node-container.children as array
 		}
     },
 
@@ -401,12 +415,14 @@ Y.extend(Nav, Y.Base, {
     * @param1 {Node} node  String representing the navigable containers id.
     * @param2 {Rank} integer [1-maxlenofregistry]
     * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
+	* @param4 {pullToTop} Boolean: if true then the child will not be centered instead pulled to the top of the page.
+
     * register the container that needs navigation
     * updates the container-object:
     *	- gets all the children of the @param node, and puts them in an array.
     *	- updates the container id if it has one else generates a dummy one.
     */
-    updateChildren: function(node,rank,isHorizontal){
+    updateChildren: function(node,rank,isHorizontal,pullToTop){
 		var childrenObj = node.all('> *'),
 
 			children = [],
@@ -418,6 +434,7 @@ Y.extend(Nav, Y.Base, {
 		});
 
 		container.isHorizontal = isHorizontal || false;
+		container.pullToTop = pullToTop ||false;
 		container.rank = rank;
 		container.node = node;
 		container.children = children;
@@ -447,7 +464,9 @@ Y.extend(Nav, Y.Base, {
     deactivateRegisteredContainer: function(){
 
 		this.killAllChildNavigationSubscription();
-		this.removeHighlightonContainer();
+		if(this.get('styleContainer')){
+			this.removeHighlightonContainer();
+		}
 		this.removeHighlightonCurrentChild();
 		this.resetContainer();
     },
@@ -525,7 +544,8 @@ Y.extend(Nav, Y.Base, {
 			containerId: null, /*String*/
 			children: [], /*array type*/
 			childIndexInFocus: -1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
-			isHorizontal: false
+			isHorizontal: false,
+			pullToTop: false
 		};
 		this.wasLastChild = false;
     },
@@ -585,7 +605,9 @@ Y.extend(Nav, Y.Base, {
 			xy;
 
 		if( container && container.node ){
-			this.highlightContainer();
+			if(this.get('styleContainer')){
+				this.highlightContainer();
+			}
 			/*splash coordinates*/
 			if( this.get('debug') ){
 				//xy = container.node.getXY();
@@ -653,7 +675,6 @@ Y.extend(Nav, Y.Base, {
 			newindex = this.getNextIndex(childIndexInFocus);
 			container.childIndexInFocus=newindex;
 			this.bringChildtoFocus(container.children[newindex]);
-		}else{
 		}
 	},
 
@@ -765,8 +786,9 @@ Y.extend(Nav, Y.Base, {
 				to: {
 						scroll : [Y.DOM.docScrollX(),y]
 					},
-					duration: 0.2,
-					easing:  Y.Easing.easeNone
+					duration: DURATION_OF_SMOOTHSCROLL,
+					
+					easing:  ANIMTYPE_FOR_SMOOTHSCROLL
 			}).run();
 
 		}
@@ -774,12 +796,14 @@ Y.extend(Nav, Y.Base, {
 		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
 		*/
     },
+
+
     /**
-    * Function to adjust scrolling and centering the child element which is in focus
+    * Function to adjust scrolling  child element which is in focus
     * @param Node: DOM element(child node in focus of the navigable container)
-    * @return : Integer:amount to scroll to get the elem under focus to the center
+    * @return : Integer:amount to scroll to get the elem under focus to the center or to the top
     */
-	scrollToCenter: function( Node ){
+	scrollTo: function( Node ){
 		var childsY = Node.getY(),
 			childHeight = Node.get('clientHeight'),
 			adjustScroll = childHeight/2,
@@ -790,23 +814,28 @@ Y.extend(Nav, Y.Base, {
 		if( childHeight > winHeight ){
 			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
 		}
+
+
 		if( childsY > halfwinheight ){
 			if( this.anim && this.anim.get('running') ){
 				this.anim.pause();
 			}
-			amounttoScroll = childsY-halfwinheight+adjustScroll;
-		}else{
+			if(this.container && this.container.pullToTop){
+				amounttoScroll = childsY;
+			}else{
+				amounttoScroll = childsY-halfwinheight+adjustScroll; //will center the div
+			}
 		}
+
+
 
 
 		if(Y.DOM.inViewportRegion(Y.Node.getDOMNode(Node),true,null)){
 			return null;
 		}else{
-			Node.scrollIntoView();
+			//Node.scrollIntoView();
 			return amounttoScroll;
 		}
-		
-		return amounttoScroll;
 	},
 
 	/**
@@ -822,6 +851,33 @@ Y.extend(Nav, Y.Base, {
 			debug_alldim={};
 
 		childInFocus.addClass( _CHILD_HIGHLIGHT_CLASS ).focus();
+
+		if( this.anim && this.anim.get('running') ){
+			this.anim.pause();
+		}
+		
+		/** since this is now taken care in scrollto Function
+		if( this.wasLastChild ){
+			//childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
+		}
+
+		if( this.container.childIndexInFocus===0 ){
+			//childInFocus.scrollIntoView();
+		}
+		**/
+
+		amounttoScroll = this.scrollTo(childInFocus); //window.scroll(0,amounttoScroll);
+		if(amounttoScroll){
+			debug_alldim ={
+				childsY : childInFocus.getY(),
+				childHeight : childInFocus.get('clientHeight'),
+				winHeight : childInFocus.get('winHeight'),
+				currentScrollY: Y.DOM.docScrollY(),
+				amountgoingtoScroll:amounttoScroll
+			};
+			this._scroll(amounttoScroll,childInFocus.getY);
+		}
+
 		if( this.activeLink ){
 			this.activeLink.blur();
 		}
@@ -835,30 +891,6 @@ Y.extend(Nav, Y.Base, {
 			this.activeLink = linkArr[0];
 		}
 
-		if( this.anim && this.anim.get('running') ){
-			this.anim.pause();
-		}
-		
-		/** since this is now taken care in scrolltoCenter Function
-		if( this.wasLastChild ){
-			//childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
-		}
-
-		if( this.container.childIndexInFocus===0 ){
-			//childInFocus.scrollIntoView();
-		}
-		**/
-		amounttoScroll = this.scrollToCenter(childInFocus); //window.scroll(0,amounttoScroll);
-		if(amounttoScroll){
-			debug_alldim ={
-				childsY : childInFocus.getY(),
-				childHeight : childInFocus.get('clientHeight'),
-				winHeight : childInFocus.get('winHeight'),
-				currentScrollY: Y.DOM.docScrollY(),
-				amountgoingtoScroll:amounttoScroll
-			};
-			this._scroll(amounttoScroll,childInFocus.getY);
-		}
 	}
 
 });

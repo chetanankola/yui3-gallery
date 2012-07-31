@@ -1,3 +1,4 @@
+
 /**
  * Provides easy and custom navigation across various dom elements using keyboard.
  *
@@ -24,6 +25,13 @@ var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	SMOOTH_SCROLL = true,
 
+	DURATION_OF_SMOOTHSCROLL = 0.3,
+
+	ANIMTYPE_FOR_SMOOTHSCROLL = Y.Easing.easeIn,
+
+	/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
+		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
+		*/
 	Nav = function(config){
 		Nav.superclass.constructor.apply(this, arguments);
 	};
@@ -51,6 +59,10 @@ Nav.ATTRS = {
  
     debug:{
 		value: null
+    },
+
+	styleContainer: {
+		value: false
     }
 
 };
@@ -77,7 +89,9 @@ Y.extend(Nav, Y.Base, {
 
 		activeLink : null, /*holds the current link within a child of the container which is receiving focus*/
  
-		isHorizontal: false /*mode of alignment of the children: horizontal , or by default it is vertical*/
+		isHorizontal: false, /*mode of alignment of the children: horizontal , or by default it is vertical*/
+
+		pullToTop: false /*meant for slideshow kind of containers where you want child elements to scroll to top than being centered*/
     },
 
 
@@ -95,12 +109,10 @@ Y.extend(Nav, Y.Base, {
 		this.makeNextContainerNavigable();
 
 		Y.one('body').on( "key",  function( e ) {
-			Y.log('Navigation disabled',"info");
 			self.disableAllNavigation();
 		},KEY_TO_DISABLE_NAVIGATION);
 
 		Y.one('body').on( "key",  function( e ) {
-			Y.log('Navigation enabled',"info");
 			self.enableAllNavigation();
 		},KEY_TO_ENABLE_NAVIGATION);
     },
@@ -143,14 +155,9 @@ Y.extend(Nav, Y.Base, {
 			registry = this.get('registry');
 
 		if(Y.one(node)){
-			Y.log('Registering new container:',"info");
-			Y.log(regEntry,"info");
 			registry[registry.length] =  regEntry;
 			this.reorderRegistryByRank();
 		}else{
-			Y.log('Trying to register a node that doesnt exist', "warn");
-			Y.log('registration of node failed:'+node, "warn");
-			Y.log(regEntry,"warn");
 		}
 	},
 
@@ -171,16 +178,11 @@ Y.extend(Nav, Y.Base, {
 		if( node ){
 			index = this.isNodeInRegistry(nodeId);
 			if( index !== null ){
-				Y.log('De-Registering Container Node:'+nodeId, "info");
-				Y.log(regEntry, "info");
 				registry.splice(index,1);
-				Y.log('after Deregistration: Registry:',"info");
 				this.reorderRegistryByRank();
 			}else{
-				Y.log('de-registration of node failed:index in registry'+index, "warn");
 			}
 		}else{
-			Y.log('invalid node provided for deregistration:'+nodeId, "warn");
 		}
 	},
 
@@ -218,9 +220,6 @@ Y.extend(Nav, Y.Base, {
 			newregistry = [],
 			rank,j,i;
 
-			Y.log('Reordering Registry',"info");
-			Y.log('unordered Registry:', "info");
-			Y.log(registry, "info");
 
 			for(i=0;i<len;i++){
 				newregistry[i] = null;
@@ -233,8 +232,6 @@ Y.extend(Nav, Y.Base, {
 				rank = registry[i].rank;
 				if(rank && rank>0 && rank<=len){
 					if(newregistry[rank-1]!==null){
-						Y.log('repeated rank,making it null to resolve ambiguity', "warn");
-						Y.log(registry[i], "warn");
 						registry[i].rank = null;
 					}else{
 						newregistry[rank-1] = registry[i];
@@ -253,8 +250,6 @@ Y.extend(Nav, Y.Base, {
 					newregistry[j].rank = j+1; //update the null or invalid rank now
 				}
 			}
-			Y.log('reordered Registry:', "info");
-			Y.log(newregistry, "info");
 			this.set('registry',newregistry);
 			//return newregistry;
     },
@@ -269,20 +264,17 @@ Y.extend(Nav, Y.Base, {
     activateContainerNavigation:function(){
 		var self = this;
 		if( Y.ContainerSubscr ){
-			Y.log('Container navigation is already enabled');
 			return false;
 		}else{
 			Y.ContainerSubscr = {};
 		}
 
 		Y.ContainerSubscr.next = Y.one('body').on("key",  function( e ) {
-			Y.log('Shift+RightArrow was pressed');
 			self.makeNextContainerNavigable(_NEXT);
 
 		},SHIFT_RIGHT_ARROW);
 
 		Y.ContainerSubscr.prev = Y.one('body').on("key",  function( e ) {
-			Y.log('Shift+Left was pressed');
 			self.makeNextContainerNavigable(_PREV);
 		}, SHIFT_LEFT_ARROW);
 
@@ -304,16 +296,12 @@ Y.extend(Nav, Y.Base, {
 
 		if( ContainerSubscr ){
 	
-			Y.log("detaching  subscriptions to navigate across container","info");
 			for( subscription in ContainerSubscr ){
 				if (ContainerSubscr.hasOwnProperty( subscription )) {
-					Y.log('detaching subscription:'+subscription,"info");
 					ContainerSubscr[subscription].detach();
 				}
 			}
 			delete Y.ContainerSubscr;
-		}else{
-			Y.log('Trying to deactivate container when there are no subscriptions yet', "warn");
 		}
 
 		this.set('activeRegistryIndex',null);
@@ -335,7 +323,9 @@ Y.extend(Nav, Y.Base, {
 
 			node,
 
-			isHorizontal = false;
+			isHorizontal = false,
+
+			pullToTop = false;
 		
 		if( registry.length > 0 ){
 			index = this.getNextRegistryIndex( shiftRight );
@@ -344,16 +334,14 @@ Y.extend(Nav, Y.Base, {
 				node = Y.one( registry[index].node );
 				if( node ){
 					isHorizontal = registry[index].isHorizontal || false;
+					pullToTop = registry[index].pullToTop || false;
 					this.deactivateRegisteredContainer();
-					this.registerContainer(node,(index+1),isHorizontal); //+1 , since rank starts from 1 to length of registry
+					this.registerContainer(node,(index+1),isHorizontal,pullToTop); //+1 , since rank starts from 1 to length of registry
 					this.initiateNavigation();
 				} else {
 					this.deactivateRegisteredContainer();
-					Y.log('Registered Container does not exist:id='+registry[index].node);
 				}
 			}
-		} else {
-			Y.log('nothing was registered for navigation');
 		}
     },
 
@@ -392,14 +380,10 @@ Y.extend(Nav, Y.Base, {
 				}
 
 				this.set('activeRegistryIndex',regIndex);
-				Y.log('NextRegistryIndex:'+this.get('activeRegistryIndex'));
 
 				if( Y.one( registry[regIndex].node ) ){//node is fine
 					return regIndex;
 				}else{
-					Y.log('Registry contains a node which couldnt be found on page. Node:'+registry[regIndex].node,"warn");
-					Y.log('registry object format: {node:"#ad",rank:2}, erroneous object looks like below:',"warn");
-					Y.log(registry[regIndex],"warn");
 				}
 			}
 			return regIndex;
@@ -414,19 +398,12 @@ Y.extend(Nav, Y.Base, {
 	* @param : {Node} node (Container to be scanned for its children )
     * @param2 {Rank} integer [1-maxlenofregistry]
     * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
-
+	* param4 {pullToTop} Boolean: if true then the child will not be centered instead pulled to the top of the page.
 	*/
-    registerContainer: function(node,rank,isHorizontal){
+    registerContainer: function(node,rank,isHorizontal,pullToTop){
 
 		if(node){
-			Y.log('activating container for navigation. Node:#'+node.generateID(),"info");
-			Y.log(node, "info");
-			this.updateChildren(node,rank,isHorizontal); //will update node-container.children as array
-			Y.log('Navigable Container Object:', "info");
-			Y.log(this.container, "info");
-			Y.log('container is ready for navigation', "info");
-		}else{
-			Y.log('Node is invalid',"error");
+			this.updateChildren(node,rank,isHorizontal,pullToTop); //will update node-container.children as array
 		}
     },
 
@@ -436,12 +413,14 @@ Y.extend(Nav, Y.Base, {
     * @param1 {Node} node  String representing the navigable containers id.
     * @param2 {Rank} integer [1-maxlenofregistry]
     * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
+	* @param4 {pullToTop} Boolean: if true then the child will not be centered instead pulled to the top of the page.
+
     * register the container that needs navigation
     * updates the container-object:
     *	- gets all the children of the @param node, and puts them in an array.
     *	- updates the container id if it has one else generates a dummy one.
     */
-    updateChildren: function(node,rank,isHorizontal){
+    updateChildren: function(node,rank,isHorizontal,pullToTop){
 		var childrenObj = node.all('> *'),
 
 			children = [],
@@ -453,13 +432,12 @@ Y.extend(Nav, Y.Base, {
 		});
 
 		container.isHorizontal = isHorizontal || false;
+		container.pullToTop = pullToTop ||false;
 		container.rank = rank;
 		container.node = node;
 		container.children = children;
 		container.containerId = node.generateID();//generateID() returns existing node id or creates one if it doesnt exist
 
-		Y.log('total num of children:'+children.length, "info");
-		Y.log('children:['+children+']', "info");
     },
 
 	/**
@@ -484,7 +462,9 @@ Y.extend(Nav, Y.Base, {
     deactivateRegisteredContainer: function(){
 
 		this.killAllChildNavigationSubscription();
-		this.removeHighlightonContainer();
+		if(this.get('styleContainer')){
+			this.removeHighlightonContainer();
+		}
 		this.removeHighlightonCurrentChild();
 		this.resetContainer();
     },
@@ -562,7 +542,8 @@ Y.extend(Nav, Y.Base, {
 			containerId: null, /*String*/
 			children: [], /*array type*/
 			childIndexInFocus: -1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
-			isHorizontal: false
+			isHorizontal: false,
+			pullToTop: false
 		};
 		this.wasLastChild = false;
     },
@@ -622,24 +603,21 @@ Y.extend(Nav, Y.Base, {
 			xy;
 
 		if( container && container.node ){
-			this.highlightContainer();
-			Y.log('rank of the container:'+container.rank);
-			Y.log('Container is horizontal:'+container.isHorizontal);
+			if(this.get('styleContainer')){
+				this.highlightContainer();
+			}
 			/*splash coordinates*/
 			if( this.get('debug') ){
 				//xy = container.node.getXY();
 				//xy[0] = xy[0] +50;
 				//xy[1] = xy[1] -50;
 				xy = [200,200];
-				Y.log('Splash coordinates',"info");
-				Y.log( xy );
 				this.splash('Rank:'+container.rank+'<br>id:'+container.node.generateID()+'<br>isHorizontal:'+container.isHorizontal,xy);
 			}
 		}
 		
 		/** on KeyDown **/
 		Y.BodySubscr = {};
-		Y.log('attaching new subscription for child navigation',"info");
 		if( container.isHorizontal ){
 			Y.BodySubscr.keyright = Y.one('body').on('right',Y.bind(this.onMyKeyDown,this));
 			/** ON KeyRight **/
@@ -668,10 +646,8 @@ Y.extend(Nav, Y.Base, {
 			subscription;
 
 		if(BodySubscr){
-			Y.log("detaching existing subscriptions","info");
 			for( subscription in BodySubscr ){
 				if ( BodySubscr.hasOwnProperty( subscription ) ) {
-					Y.log('detaching subscription:'+subscription, "info");
 					BodySubscr[subscription].detach();
 				}
 			}
@@ -695,11 +671,8 @@ Y.extend(Nav, Y.Base, {
 			e.preventDefault();
 			childIndexInFocus = container.childIndexInFocus;
 			newindex = this.getNextIndex(childIndexInFocus);
-			Y.log('on down-arrow-Key press:child index infocus:'+newindex, "info");
 			container.childIndexInFocus=newindex;
 			this.bringChildtoFocus(container.children[newindex]);
-		}else{
-			Y.log('no container is active on arrow key down',"warn");
 		}
 	},
 
@@ -717,11 +690,9 @@ Y.extend(Nav, Y.Base, {
 			e.preventDefault();
 			childIndexInFocus = container.childIndexInFocus;
 			newindex = this.getPreviousIndex(childIndexInFocus);
-			Y.log('onkeyup:Infocus:'+newindex);
 			this.bringChildtoFocus(container.children[newindex]);
 			container.childIndexInFocus=newindex;
 		}else{
-			Y.log('no container is active on arrow key up',"warn");
 		}
 	},
 
@@ -813,8 +784,9 @@ Y.extend(Nav, Y.Base, {
 				to: {
 						scroll : [Y.DOM.docScrollX(),y]
 					},
-					duration: 0.2,
-					easing:  Y.Easing.easeNone
+					duration: DURATION_OF_SMOOTHSCROLL,
+					
+					easing:  ANIMTYPE_FOR_SMOOTHSCROLL
 			}).run();
 
 		}
@@ -822,12 +794,14 @@ Y.extend(Nav, Y.Base, {
 		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
 		*/
     },
+
+
     /**
-    * Function to adjust scrolling and centering the child element which is in focus
+    * Function to adjust scrolling  child element which is in focus
     * @param Node: DOM element(child node in focus of the navigable container)
-    * @return : Integer:amount to scroll to get the elem under focus to the center
+    * @return : Integer:amount to scroll to get the elem under focus to the center or to the top
     */
-	scrollToCenter: function( Node ){
+	scrollTo: function( Node ){
 		var childsY = Node.getY(),
 			childHeight = Node.get('clientHeight'),
 			adjustScroll = childHeight/2,
@@ -838,26 +812,28 @@ Y.extend(Nav, Y.Base, {
 		if( childHeight > winHeight ){
 			adjustScroll = 0;  //this is to make sure that if the child is taller than the screen then just position it								// position its top at the center of the screen.
 		}
+
+
 		if( childsY > halfwinheight ){
 			if( this.anim && this.anim.get('running') ){
 				this.anim.pause();
 			}
-			amounttoScroll = childsY-halfwinheight+adjustScroll;
-		}else{
-			Y.log('Elements Y coordinate is less than half the window height', "info");
+			if(this.container && this.container.pullToTop){
+				amounttoScroll = childsY;
+			}else{
+				amounttoScroll = childsY-halfwinheight+adjustScroll; //will center the div
+			}
 		}
+
+
 
 
 		if(Y.DOM.inViewportRegion(Y.Node.getDOMNode(Node),true,null)){
-			Y.log('No Scroll', "warn");
 			return null;
 		}else{
-			Y.log('amount to scroll:'+amounttoScroll, "warn");
-			Node.scrollIntoView();
+			//Node.scrollIntoView();
 			return amounttoScroll;
 		}
-		
-		return amounttoScroll;
 	},
 
 	/**
@@ -873,6 +849,33 @@ Y.extend(Nav, Y.Base, {
 			debug_alldim={};
 
 		childInFocus.addClass( _CHILD_HIGHLIGHT_CLASS ).focus();
+
+		if( this.anim && this.anim.get('running') ){
+			this.anim.pause();
+		}
+		
+		/** since this is now taken care in scrollto Function
+		if( this.wasLastChild ){
+			//childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
+		}
+
+		if( this.container.childIndexInFocus===0 ){
+			//childInFocus.scrollIntoView();
+		}
+		**/
+
+		amounttoScroll = this.scrollTo(childInFocus); //window.scroll(0,amounttoScroll);
+		if(amounttoScroll){
+			debug_alldim ={
+				childsY : childInFocus.getY(),
+				childHeight : childInFocus.get('clientHeight'),
+				winHeight : childInFocus.get('winHeight'),
+				currentScrollY: Y.DOM.docScrollY(),
+				amountgoingtoScroll:amounttoScroll
+			};
+			this._scroll(amounttoScroll,childInFocus.getY);
+		}
+
 		if( this.activeLink ){
 			this.activeLink.blur();
 		}
@@ -886,32 +889,6 @@ Y.extend(Nav, Y.Base, {
 			this.activeLink = linkArr[0];
 		}
 
-		if( this.anim && this.anim.get('running') ){
-			this.anim.pause();
-		}
-		
-		/** since this is now taken care in scrolltoCenter Function
-		if( this.wasLastChild ){
-			Y.log('last child', "info");   //this needs to be outside since both up and down needs this
-			//childInFocus.scrollIntoView(); //this is a temp fix try to remove this and fix navigation later
-		}
-
-		if( this.container.childIndexInFocus===0 ){
-			//childInFocus.scrollIntoView();
-		}
-		**/
-		amounttoScroll = this.scrollToCenter(childInFocus); //window.scroll(0,amounttoScroll);
-		if(amounttoScroll){
-			debug_alldim ={
-				childsY : childInFocus.getY(),
-				childHeight : childInFocus.get('clientHeight'),
-				winHeight : childInFocus.get('winHeight'),
-				currentScrollY: Y.DOM.docScrollY(),
-				amountgoingtoScroll:amounttoScroll
-			};
-			Y.log(debug_alldim, "scroll");
-			this._scroll(amounttoScroll,childInFocus.getY);
-		}
 	}
 
 });
