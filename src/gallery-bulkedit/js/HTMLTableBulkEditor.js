@@ -25,6 +25,7 @@ HTMLTableBulkEditor.ATTRS =
 	 *
 	 * @attribute columns
 	 * @type {Array}
+	 * @required
 	 * @writeonce
 	 */
 	columns:
@@ -53,12 +54,18 @@ HTMLTableBulkEditor.ATTRS =
 	}
 };
 
-var cell_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'cell'),
+var cell_class        = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'cell'),
 	cell_class_prefix = cell_class + '-',
-	odd_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'odd'),
-	even_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'even'),
-	msg_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'record-message'),
-	liner_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'liner');
+	odd_class         = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'odd'),
+	even_class        = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'even'),
+	msg_class         = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'record-message'),
+	liner_class       = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'liner'),
+
+	input_class          = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'input'),
+	textarea_class       = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'textarea'),
+	select_class         = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'select'),
+	checkbox_class       = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'checkbox'),
+	cb_multiselect_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'checkbox-multiselect');
 
 /**
  * Renders an input element in the cell.
@@ -70,6 +77,7 @@ var cell_class = Y.ClassNameManager.getClassName(HTMLTableBulkEditor.NAME, 'cell
 HTMLTableBulkEditor.inputFormatter = function(o)
 {
 	o.cell.set('innerHTML', BulkEditor.markup.input.call(this, o));
+	o.cell.addClass(input_class);
 };
 
 /**
@@ -82,6 +90,7 @@ HTMLTableBulkEditor.inputFormatter = function(o)
 HTMLTableBulkEditor.textareaFormatter = function(o)
 {
 	o.cell.set('innerHTML', BulkEditor.markup.textarea.call(this, o));
+	o.cell.addClass(textarea_class);
 };
 
 /**
@@ -94,6 +103,33 @@ HTMLTableBulkEditor.textareaFormatter = function(o)
 HTMLTableBulkEditor.selectFormatter = function(o)
 {
 	o.cell.set('innerHTML', BulkEditor.markup.select.call(this, o));
+	o.cell.addClass(select_class);
+};
+
+/**
+ * Renders a checkbox element in the cell.
+ *
+ * @method checkboxFormatter
+ * @static
+ * @param o {Object} cell, key, value, field, column, record
+ */
+HTMLTableBulkEditor.checkboxFormatter = function(o)
+{
+	o.cell.set('innerHTML', BulkEditor.markup.checkbox.call(this, o));
+	o.cell.addClass(checkbox_class);
+};
+
+/**
+ * Renders a set of checkboxes for multiselect in the cell.
+ *
+ * @method checkboxMultiselectFormatter
+ * @static
+ * @param o {Object} cell, key, value, field, column, record
+ */
+HTMLTableBulkEditor.checkboxMultiselectFormatter = function(o)
+{
+	o.cell.set('innerHTML', BulkEditor.markup.checkboxMultiselect.call(this, o));
+	o.cell.addClass(cb_multiselect_class);
 };
 
 /**
@@ -115,6 +151,16 @@ HTMLTableBulkEditor.defaults =
 		formatter: HTMLTableBulkEditor.selectFormatter
 	},
 
+	checkbox:
+	{
+		formatter: HTMLTableBulkEditor.checkboxFormatter
+	},
+
+	checkboxMultiselect:
+	{
+		formatter: HTMLTableBulkEditor.checkboxMultiselectFormatter
+	},
+
 	textarea:
 	{
 		formatter: HTMLTableBulkEditor.textareaFormatter
@@ -134,11 +180,11 @@ function moveFocus(e)
 	var bd = this.getRecordContainer(e.target);
 	if (bd && e.keyCode == 38)
 	{
-		bd = bd.previousSibling;
+		bd = bd.previous();
 	}
 	else if (bd)
 	{
-		bd = bd.nextSibling;
+		bd = bd.next();
 	}
 
 	var id = bd && this.getRecordId(bd);
@@ -163,6 +209,11 @@ function moveFocus(e)
 
 Y.extend(HTMLTableBulkEditor, BulkEditor,
 {
+	bindUI: function()
+	{
+		// attach events after creating the table
+	},
+
 	_renderContainer: function(
 		/* element */	container)
 	{
@@ -196,6 +247,7 @@ Y.extend(HTMLTableBulkEditor, BulkEditor,
 			container.set('innerHTML', s);
 			this.table = container.get('firstChild');
 
+			this._attachEvents(this.table);
 			Y.on('key', moveFocus, this.table, 'down:38,40+ctrl', this);
 
 			Y.Object.each(this.get('events'), function(e)
@@ -208,7 +260,7 @@ Y.extend(HTMLTableBulkEditor, BulkEditor,
 		{
 			while (this.table.get('children').size() > 1)
 			{
-				this.table.get('lastChild').remove();
+				this.table.get('lastChild').remove().destroy(true);
 			}
 		}
 	},

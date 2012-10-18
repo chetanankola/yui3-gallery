@@ -37,6 +37,7 @@ BulkEditor.ATTRS =
 	/**
 	 * @attribute ds
 	 * @type {DataSource.BulkEdit}
+	 * @required
 	 * @writeonce
 	 */
 	ds:
@@ -56,6 +57,7 @@ BulkEditor.ATTRS =
 	 *
 	 * @attribute fields
 	 * @type {Object}
+	 * @required
 	 * @writeonce
 	 */
 	fields:
@@ -125,12 +127,16 @@ BulkEditor.ATTRS =
 
 /**
  * @event notifyErrors
- * @description Fires when widget-level validation messages need to be displayed.
+ * @description Fired when widget-level validation messages need to be displayed.
  * @param msgs {Array} the messages to display
  */
 /**
  * @event clearErrorNotification
- * @description Fires when widget-level validation messages should be cleared.
+ * @description Fired when widget-level validation messages should be cleared.
+ */
+/**
+ * @event pageRendered
+ * @description Fired every time after the editor has rendered a page.
  */
 
 var default_page_size = 1e9,
@@ -138,10 +144,6 @@ var default_page_size = 1e9,
 	id_prefix = 'bulk-editor',
 	id_separator = '__',
 	id_regex = new RegExp('^' + id_prefix + id_separator + '(.+?)(?:' + id_separator + '(.+?))?$'),
-
-	field_container_class        = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'field-container'),
-	field_container_class_prefix = field_container_class + '-',
-	field_class_prefix           = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'field') + '-',
 
 	status_prefix  = 'bulkedit-has',
 	status_pattern = status_prefix + '([a-z]+)',
@@ -157,6 +159,10 @@ var default_page_size = 1e9,
 
 BulkEditor.record_container_class     = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'bd');
 BulkEditor.record_msg_container_class = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'record-message-container');
+
+BulkEditor.field_container_class        = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'field-container');
+BulkEditor.field_container_class_prefix = BulkEditor.field_container_class + '-';
+BulkEditor.field_class_prefix           = Y.ClassNameManager.getClassName(BulkEditor.NAME, 'field') + '-';
 
 function switchPage(state)
 {
@@ -185,6 +191,24 @@ Y.extend(BulkEditor, Y.Widget,
 	{
 		this.clearServerErrors();
 		this.reload();
+	},
+
+	bindUI: function()
+	{
+		this._attachEvents(this.get('contentBox'));
+	},
+
+	/**
+	 * Attaches events to the container.
+	 *
+	 * @method _attachEvents
+	 * @param container {Node} node to which events should be attached
+	 * @protected
+	 */
+	_attachEvents: function(
+		/* node */	container)
+	{
+		Y.delegate('bulkeditor|click', handleCheckboxMultiselect, container, '.checkbox-multiselect input', this);
 	},
 
 	/**
@@ -252,12 +276,34 @@ Y.extend(BulkEditor, Y.Widget,
 		var ds      = this.get('ds');
 		var records = ds.getCurrentRecords();
 		var id_key  = ds.get('uniqueIdKey');
-		Y.Object.each(this.get('fields'), function(value, key)
+		Y.Object.each(this.get('fields'), function(field, key)
 		{
 			Y.Array.each(records, function(r)
 			{
-				var node = this.getFieldElement(r, key);
-				ds.updateValue(r[ id_key ], key, node.get('value'));
+				var node = this.getFieldElement(r, key),
+					tag  = node.get('tagName').toLowerCase(),
+					value;
+				if (tag == 'input' && node.get('type').toLowerCase() == 'checkbox')
+				{
+					value = node.get('checked') ? field.values.on : field.values.off;
+				}
+				else if (tag == 'select' && node.get('multiple'))
+				{
+					value = Y.reduce(Y.Node.getDOMNode(node).options, [], function(v, o)
+					{
+						if (o.selected)
+						{
+							v.push(o.value);
+						}
+						return v;
+					});
+				}
+				else
+				{
+					value = node.get('value');
+				}
+
+				ds.updateValue(r[ id_key ], key, value);
 			},
 			this);
 		},
@@ -468,7 +514,7 @@ Y.extend(BulkEditor, Y.Widget,
 		/* string */				key)
 	{
 		var field = this.getFieldElement(record, key);
-		return field.getAncestorByClassName(field_container_class, true);
+		return field.getAncestorByClassName(BulkEditor.field_container_class, true);
 	},
 
 	/**
@@ -571,7 +617,6 @@ Y.extend(BulkEditor, Y.Widget,
 		Y.log('_render', 'debug');
 
 		var container = this.get('contentBox');
-		Y.Event.purgeElement(container);
 		this._renderContainer(container);
 		container.set('scrollTop', 0);
 		container.set('scrollLeft', 0);
@@ -582,6 +627,8 @@ Y.extend(BulkEditor, Y.Widget,
 			this._renderRecord(node, record);
 		},
 		this);
+
+		this.fire('pageRendered');
 
 		if (this.auto_validate)
 		{
@@ -1112,7 +1159,7 @@ Y.extend(BulkEditor, Y.Widget,
 		var bd1     = this.getRecordContainer(e);
 		var changed = this._updateRecordStatus(bd1, type, status_pattern, status_re, status_prefix);
 
-		var bd2 = e.getAncestorByClassName(field_container_class);
+		var bd2 = e.getAncestorByClassName(BulkEditor.field_container_class);
 		if (Y.FormManager.statusTakesPrecedence(this._getElementStatus(bd2, status_re), type))
 		{
 			if (msg)
@@ -1224,10 +1271,10 @@ Y.extend(BulkEditor, Y.Widget,
 // Markup
 //
 
-function cleanHTML(s)
+BulkEditor.cleanHTML = function(s)
 {
-	return (s ? Y.Escape.html(s) : '');
-}
+	return (Y.Lang.isValue(s) ? Y.Escape.html(s) : '');
+};
 
 /**
  * @property Y.BulkEditor.error_msg_markup
@@ -1288,12 +1335,12 @@ BulkEditor.markup =
 
 		return Y.Lang.sub(input,
 		{
-			cont:  field_container_class + ' ' + field_container_class_prefix,
-			field: field_class_prefix,
+			cont:  BulkEditor.field_container_class + ' ' + BulkEditor.field_container_class_prefix,
+			field: BulkEditor.field_class_prefix,
 			key:   o.key,
 			id:    this.getFieldId(o.record, o.key),
 			label: label,
-			value: cleanHTML(o.value),
+			value: BulkEditor.cleanHTML(o.value),
 			yiv:   (o.field && o.field.validation && o.field.validation.css) || '',
 			msg1:  label ? BulkEditor.error_msg_markup : '',
 			msg2:  label ? '' : BulkEditor.error_msg_markup
@@ -1316,8 +1363,8 @@ BulkEditor.markup =
 			return s + Y.Lang.sub(option,
 			{
 				value:    v.value,
-				text:     cleanHTML(v.text),
-				selected: o.value && o.value.toString() === v.value ? 'selected' : ''
+				text:     BulkEditor.cleanHTML(v.text),
+				selected: o.value && o.value.toString() === v.value ? 'selected="selected"' : ''
 			});
 		});
 
@@ -1325,8 +1372,8 @@ BulkEditor.markup =
 
 		return Y.Lang.sub(select,
 		{
-			cont:  	 field_container_class + ' ' + field_container_class_prefix,
-			field:   field_class_prefix,
+			cont:  	 BulkEditor.field_container_class + ' ' + BulkEditor.field_container_class_prefix,
+			field:   BulkEditor.field_class_prefix,
 			key:     o.key,
 			id:      this.getFieldId(o.record, o.key),
 			label:   label,
@@ -1334,6 +1381,86 @@ BulkEditor.markup =
 			yiv:     (o.field && o.field.validation && o.field.validation.css) || '',
 			msg1:    label ? BulkEditor.error_msg_markup : '',
 			msg2:    label ? '' : BulkEditor.error_msg_markup
+		});
+	},
+
+	checkbox: function(o)
+	{
+		var checkbox =
+			'<div class="{cont}{key}">' +
+				'<input type="checkbox" id="{id}" {value} class="{field}{key}" /> ' +
+				'<label for="{id}">{label}</label>' +
+				'{msg}' +
+			'</div>';
+
+		var label = o.field && o.field.label ? BulkEditor.labelMarkup.call(this, o) : '';
+
+		return Y.Lang.sub(checkbox,
+		{
+			cont:  BulkEditor.field_container_class + ' ' + BulkEditor.field_container_class_prefix,
+			field: BulkEditor.field_class_prefix,
+			key:   o.key,
+			id:    this.getFieldId(o.record, o.key),
+			label: label,
+			value: o.value == o.field.values.on ? 'checked="checked"' : '',
+			msg:   BulkEditor.error_msg_markup
+		});
+	},
+
+	checkboxMultiselect: function(o)
+	{
+		var select =
+			'<div class="{cont}{key}">' +
+				'{label}{msg}' +
+				'<div id="{id}-cbs" class="checkbox-multiselect">{cbs}</div>' +
+				'<select id="{id}" class="{field}{key}" multiple="multiple" style="display:none;">{options}</select>' +
+			'</div>';
+
+		var id        = this.getFieldId(o.record, o.key),
+			has_value = Y.Lang.isArray(o.value);
+
+		var checkbox =
+			'<p class="checkbox-multiselect-checkbox">' +
+				'<input type="checkbox" id="{id}-{value}" value="{value}" {checked} /> ' +
+				'<label for="{id}-{value}">{label}</label>' +
+			'</p>';
+
+		var cbs = Y.Array.reduce(o.field.values, '', function(s, v)
+		{
+			return s + Y.Lang.sub(checkbox,
+			{
+				id:      id,
+				value:   v.value,
+				checked: has_value && Y.Array.indexOf(o.value, v.value) >= 0 ? 'checked="checked"' : '',
+				label:   BulkEditor.cleanHTML(v.text)
+			});
+		});
+
+		var option = '<option value="{value}" {selected}>{text}</option>';
+
+		var options = Y.Array.reduce(o.field.values, '', function(s, v)
+		{
+			return s + Y.Lang.sub(option,
+			{
+				value:    v.value,
+				text:     BulkEditor.cleanHTML(v.text),
+				selected: has_value && Y.Array.indexOf(o.value, v.value) >= 0 ? 'selected="selected"' : ''
+			});
+		});
+
+		var label = o.field && o.field.label ? BulkEditor.labelMarkup.call(this, o) : '';
+
+		return Y.Lang.sub(select,
+		{
+			cont:  	 BulkEditor.field_container_class + ' ' + BulkEditor.field_container_class_prefix,
+			field:   BulkEditor.field_class_prefix,
+			key:     o.key,
+			id:      id,
+			label:   label,
+			cbs:     cbs,
+			options: options,
+			yiv:     (o.field && o.field.validation && o.field.validation.css) || '',
+			msg:     BulkEditor.error_msg_markup
 		});
 	},
 
@@ -1350,12 +1477,12 @@ BulkEditor.markup =
 
 		return Y.Lang.sub(textarea,
 		{
-			cont:   field_container_class + ' ' + field_container_class_prefix,
-			prefix: field_class_prefix,
+			cont:   BulkEditor.field_container_class + ' ' + BulkEditor.field_container_class_prefix,
+			prefix: BulkEditor.field_class_prefix,
 			key:    o.key,
 			id:     this.getFieldId(o.record, o.key),
 			label:  label,
-			value:  cleanHTML(o.value),
+			value:  BulkEditor.cleanHTML(o.value),
 			yiv:    (o.field && o.field.validation && o.field.validation.css) || '',
 			msg1:   label ? BulkEditor.error_msg_markup : '',
 			msg2:   label ? '' : BulkEditor.error_msg_markup
@@ -1381,5 +1508,21 @@ BulkEditor.fieldMarkup = function(key, record)
 		record: record
 	});
 };
+
+function handleCheckboxMultiselect(e)
+{
+	var cb     = e.currentTarget,
+		value  = cb.get('value'),
+		select = cb.ancestor('.checkbox-multiselect').next('select');
+
+	Y.some(Y.Node.getDOMNode(select).options, function(o)
+	{
+		if (o.value == value)
+		{
+			o.selected = cb.get('checked');
+			return true;
+		}
+	});
+}
 
 Y.BulkEditor = BulkEditor;
