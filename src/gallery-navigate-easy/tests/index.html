@@ -52,8 +52,7 @@
 												{node:'#main' },
 												{node:'#sidebar'},
 												{node:'#rightbar'}
-											  ]
-												).initiateNavigation(); 
+											  ]).initiateNavigation(); 
 			</p>
 		</div>
 		<div class="bright"> 
@@ -174,9 +173,7 @@
 								{node:'#sidebar',rank:1},
 								{node:'#tab ul',isHorizontal:true}
 						  ],
-
 						  debug:true,
-
 						  styleContainer:true, /*optional*/
 
 						}); 
@@ -208,12 +205,6 @@
 		Y.one('#enable').on('click',function(){
 			Nav.enableAllNavigation();
 		})			
-		/*try{
-				Y.one('body').plug(Y.TapToTopPlugin	);  
-			} catch(err){
-				Y.log(err);
-			}
-		*/
 
 	});
 	</script>
