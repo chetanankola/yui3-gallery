@@ -6,7 +6,7 @@
  */
 
 
-/*CONSTANTS*/
+/*CONSTANTS -  application using this library shall not alter these values*/
 var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	SHIFT_LEFT_ARROW = 'down:37+shift',
@@ -19,9 +19,9 @@ var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	_PREV = false,
 
-	_CHILD_HIGHLIGHT_CLASS = 'transhighlight',
+	_ELEM_HIGHLIGHT_CLASS_DEFAULT = 'yui3-elem-highlight',
 
-	_CONTAINER_HIGHLIGHT_CLASS = 'containerhighlight',
+	_CONTAINER_HIGHLIGHT_CLASS_DEFAULT = 'yui3-container-highlight',
 
 	SMOOTH_SCROLL = true,
 
@@ -29,10 +29,12 @@ var SHIFT_RIGHT_ARROW = 'down:39+shift',
 
 	ANIMTYPE_FOR_SMOOTHSCROLL = Y.Easing.easeIn,
 
+	REORDER_REGISTRY = true,
+
 	/**  //http://yuilibrary.com/yui/docs/api/classes/Easing.html
 		* backBoth backIn backOut bounceBoth bounceIn bounceOut easeBoth easeBothStrong easeIn easeInStrong easeNone easeOut easeOutStrong elasticBoth elasticIn elasticOut
 		*/
-	Nav = function(config){
+	Nav = function (config) {
 		Nav.superclass.constructor.apply(this, arguments);
 	};
 
@@ -48,22 +50,26 @@ Nav.NAME = "Navigation";
 * added by this class. The name of the attribute is the key,
 * and the object literal value acts as the configuration
 * object passed to addAttrs
+* Note: On new object creation by application, this template is auto mapped and is filled
 */
 Nav.ATTRS = {
 
-    activeRegistryIndex:{
-		value: null
-    },
-    
-    registry: [],
- 
-    debug:{
-		value: null
+	/*TODO: no need to validate this as it will be set to null in inititalizer even if app tampers with it*/
+    activeRegistryIndex: {
+		value: null /*value needs to range from */
     },
 
+    registry: [],
+
+    debug: {
+		value: null
+    },
+    /*by default the container will be styled, app needs to disable it if it doesn want any styling */
 	styleContainer: {
-		value: false
-    }
+		value: true
+    },
+    defaultContainerHightlightStyle: {},
+    defaultElemHighlightStyle:{}
 
 };
 
@@ -77,46 +83,76 @@ Y.extend(Nav, Y.Base, {
     * - children[]: Node-Array that has all the child nodes of the navigable container
     * - childIndexInFocus: Integer, that indicates the current index selected for the navigable container.
     */
-    container:{
-		
-		node:null, /*DOM elem*/
-		
-		containerId:null, /*String*/
+    container: {
+
+		node: null, /*DOM elem*/
+
+		containerId: null, /*String*/
 		
 		children:[], /*array type*/
 		
-		childIndexInFocus:-1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
+		childIndexInFocus: -1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
 
-		activeLink : null, /*holds the current link within a child of the container which is receiving focus*/
+		activeLink: null, /*holds the current link within a child of the container which is receiving focus*/
  
 		isHorizontal: false, /*mode of alignment of the children: horizontal , or by default it is vertical*/
 
-		pullToTop: false /*meant for slideshow kind of containers where you want child elements to scroll to top than being centered*/
+		pullToTop: false, /*meant for slideshow kind of containers where you want child elements to scroll to top than being centered*/
+
+		containerHighlightCustomStyle: null, /*application defined custom highlight for the container when selected*/
+
+		elemHighlightCustomStyle: null /* application defined custom highlight for the child element when selected*/
+
     },
 
 
     /**
-    * Tasks MyClass needs to perform during
+    * Tasks needed to be performed during
     * the init() lifecycle phase
     * Function for initialization, it defaults registers the node provided in the contructor, during object creation.
     */
-    initializer: function(cfg){
+    initializer: function (cfg) {
 		var self = this;
 
-		this.reorderRegistryByRank();
-		//this.set('registry',this.reorderRegistryByRank());
+		Y.one('head').append("<link href='../../../build/gallery-navigate-easy/assets/gallery-navigate-easy-core.css' rel='stylesheet' type='text/css'>");
+		this.setDefaultContainerHighlightStyle(this.get('defaultContainerHightlightStyle'));
+		this.setDefaultElemHighlightStyle(this.get('defaultElemHighlightStyle'));
+		this.set('activeRegistryIndex', null); /*to make sure anything set by the app is overridden  */
+		if(REORDER_REGISTRY === true){
+			this.reorderRegistryByRank(); //this is not really needed but is useful when ranks are provided so that registry is in the order of the ranks
+		}
+		/*this.set('registry',this.reorderRegistryByRank());*/
 		this.activateContainerNavigation();
 		this.makeNextContainerNavigable();
 
-		Y.one('body').on( "key",  function( e ) {
+		Y.one('body').on("key",  function (e) {
 			self.disableAllNavigation();
-		},KEY_TO_DISABLE_NAVIGATION);
+		}, KEY_TO_DISABLE_NAVIGATION);
 
-		Y.one('body').on( "key",  function( e ) {
+		Y.one('body').on( "key",  function (e) {
 			self.enableAllNavigation();
-		},KEY_TO_ENABLE_NAVIGATION);
+		}, KEY_TO_ENABLE_NAVIGATION);
     },
 
+
+    setDefaultContainerHighlightStyle: function (styleObj) {
+		if(styleObj) {
+			_CONTAINER_HIGHLIGHT_CLASS_DEFAULT = styleObj.className || _CONTAINER_HIGHLIGHT_CLASS_DEFAULT;
+
+			if(!styleObj.className) {
+				Y.log('no default className attribute: please specify as follows: new Y.Nav({defaultContainerHightlightStyle: {className:"my-defined-default-container-classname"} }', 'warn');
+			}
+		}
+    },
+    setDefaultElemHighlightStyle: function (styleObj) {
+		if(styleObj) {
+			_ELEM_HIGHLIGHT_CLASS_DEFAULT = styleObj.className || _ELEM_HIGHLIGHT_CLASS_DEFAULT;
+
+			if(!styleObj.className) {
+				Y.log('no default className attribute: please specify as follows: new Y.Nav({defaultElemHightlightStyle: {className:"my-defined-default-element-classname"} }', 'warn');
+			}
+		}
+    },
    /**
     * Function that enables all navigation on the page using keyboard
 	* @method enableAllNavigation
@@ -124,8 +160,8 @@ Y.extend(Nav, Y.Base, {
 	* @param : object :config{node:string,rank:integer,isHorizontal:boolean}
 	*
 	*/
-    enableAllNavigation: function(){
-		if( this.activateContainerNavigation() ){
+    enableAllNavigation: function () {
+		if(this.activateContainerNavigation()){
 				this.makeNextContainerNavigable( _NEXT );
 		}
     },
@@ -137,7 +173,7 @@ Y.extend(Nav, Y.Base, {
 	* @param
 	*
 	*/
-    disableAllNavigation:function(){
+    disableAllNavigation:function () {
 		this.deactivateRegisteredContainer(); //will also disable child events
 		this.deactivateContainerNavigation();
     },
@@ -156,7 +192,9 @@ Y.extend(Nav, Y.Base, {
 
 		if(Y.one(node)){
 			registry[registry.length] =  regEntry;
-			this.reorderRegistryByRank();
+			if(REORDER_REGISTRY === true){
+				this.reorderRegistryByRank();
+			}
 		}else{
 		}
 	},
@@ -168,22 +206,25 @@ Y.extend(Nav, Y.Base, {
 	* @param : object :config{node:string}
 	*
 	*/
-	deRegister: function(config){
+	deRegister: function(config) {
 		var regEntry = config || {},
 			nodeId = regEntry.node,
 			registry = this.get('registry'),
 			node = Y.one(nodeId),
 			index = null;
 
-		if( node ){
+		if (node) {
 			index = this.isNodeInRegistry(nodeId);
-			if( index !== null ){
-				registry.splice(index,1);
-				this.reorderRegistryByRank();
-			}else{
-			}
-		}else{
-		}
+			if(index !== null) {
+				registry.splice(index, 1); //var fruits = ["Banana", "Orange", "Apple", "Mango"];fruits.splice(2,0,"Lemon","Kiwi")
+				if(REORDER_REGISTRY === true){
+					this.reorderRegistryByRank();
+				}
+			}/* else {
+			}*/
+		}/* else {
+
+		}*/
 	},
 
     /**
@@ -196,9 +237,8 @@ Y.extend(Nav, Y.Base, {
 	*/
 	isNodeInRegistry: function(nodeId){
 		var i = 0,
-		registry = this.get('registry'),
-		len = registry.length;
-		
+			registry = this.get('registry'),
+			len = registry.length;
 		for( i=0; i<len; i++ ){
 			if( nodeId === registry[i].node ){
 				return i;
@@ -223,7 +263,7 @@ Y.extend(Nav, Y.Base, {
 
 			for(i=0;i<len;i++){
 				newregistry[i] = null;
-				if(registry[i].rank ===undefined){
+				if(registry[i].rank === undefined){
 					registry[i].rank = null;
 				}
 			}
@@ -333,10 +373,15 @@ Y.extend(Nav, Y.Base, {
 
 				node = Y.one( registry[index].node );
 				if( node ){
+
+
+
 					isHorizontal = registry[index].isHorizontal || false;
 					pullToTop = registry[index].pullToTop || false;
+					containerHighlightCustomStyle = registry[index].containerStyle || null;
+					elemHighlightCustomStyle = registry[index].elemStyle || null;
 					this.deactivateRegisteredContainer();
-					this.registerContainer(node,(index+1),isHorizontal,pullToTop); //+1 , since rank starts from 1 to length of registry
+					this.registerContainer(node,(index+1),isHorizontal,pullToTop,containerHighlightCustomStyle,elemHighlightCustomStyle); //+1 , since rank starts from 1 to length of registry
 					this.initiateNavigation();
 				} else {
 					this.deactivateRegisteredContainer();
@@ -384,6 +429,7 @@ Y.extend(Nav, Y.Base, {
 				if( Y.one( registry[regIndex].node ) ){//node is fine
 					return regIndex;
 				}else{
+					Y.log('invalid node is being tried to register or node could not be  found', 'warn');
 				}
 			}
 			return regIndex;
@@ -400,10 +446,10 @@ Y.extend(Nav, Y.Base, {
     * @param3 {isHorizontal} Boolean : if true then container is rendered horizontally else otherwise
 	* param4 {pullToTop} Boolean: if true then the child will not be centered instead pulled to the top of the page.
 	*/
-    registerContainer: function(node,rank,isHorizontal,pullToTop){
+    registerContainer: function(node,rank,isHorizontal,pullToTop,containerHighlightCustomStyle,elemHighlightCustomStyle){
 
 		if(node){
-			this.updateChildren(node,rank,isHorizontal,pullToTop); //will update node-container.children as array
+			this.updateChildren(node,rank,isHorizontal,pullToTop,containerHighlightCustomStyle,elemHighlightCustomStyle); //will update node-container.children as array
 		}
     },
 
@@ -420,7 +466,7 @@ Y.extend(Nav, Y.Base, {
     *	- gets all the children of the @param node, and puts them in an array.
     *	- updates the container id if it has one else generates a dummy one.
     */
-    updateChildren: function(node,rank,isHorizontal,pullToTop){
+    updateChildren: function(node,rank,isHorizontal,pullToTop, containerStyleObj, elemStyleObj){
 		var childrenObj = node.all('> *'),
 
 			children = [],
@@ -431,6 +477,13 @@ Y.extend(Nav, Y.Base, {
 			children[i] = child;
 		});
 
+		if(containerStyleObj && containerStyleObj.className){
+			container.containerStyle = containerStyleObj.className;
+
+		}
+		if(elemStyleObj && elemStyleObj.className){
+			container.elemStyle = elemStyleObj.className;
+		}
 		container.isHorizontal = isHorizontal || false;
 		container.pullToTop = pullToTop ||false;
 		container.rank = rank;
@@ -463,24 +516,24 @@ Y.extend(Nav, Y.Base, {
 
 		this.killAllChildNavigationSubscription();
 		if(this.get('styleContainer')){
-			this.removeHighlightonContainer();
+			this.removeHighlightOnContainer();
 		}
 		this.removeHighlightonCurrentChild();
 		this.resetContainer();
     },
 
 	/**
-    * @method removeHighlightonContainer
+    * @method removeHighlightOnContainer
 	* @protected
 	* remove any CSS highlight on the current navigable container
 	* @param
 	*
 	*/
-    removeHighlightonContainer: function(){
+    removeHighlightOnContainer: function(){
 		var container = this.container;
 
 		if( container && container.node ){
-			container.node.removeClass( _CONTAINER_HIGHLIGHT_CLASS );
+			container.node.removeClass( container.containerStyle || _CONTAINER_HIGHLIGHT_CLASS_DEFAULT );
 		}
     },
 
@@ -495,7 +548,7 @@ Y.extend(Nav, Y.Base, {
 		var container = this.container;
 
 		if(container && container.node){
-			container.node.addClass( _CONTAINER_HIGHLIGHT_CLASS );
+			container.node.addClass( container.containerStyle || _CONTAINER_HIGHLIGHT_CLASS_DEFAULT);
 		}
 	},
 
@@ -511,7 +564,7 @@ Y.extend(Nav, Y.Base, {
 			index = container.childIndexInFocus;
 
 		if( index !== null && index !== -1 ){
-			container.children[index].removeClass( _CHILD_HIGHLIGHT_CLASS );
+			container.children[index].removeClass(  this.container.elemStyle ||  _ELEM_HIGHLIGHT_CLASS_DEFAULT);
 		}
     },
 
@@ -543,7 +596,9 @@ Y.extend(Nav, Y.Base, {
 			children: [], /*array type*/
 			childIndexInFocus: -1,/* if there are 10 div elements in navigable container then this variable holds the index of the one in focus*/
 			isHorizontal: false,
-			pullToTop: false
+			pullToTop: false,
+			containerStyle:null,
+			elemStyle:null
 		};
 		this.wasLastChild = false;
     },
@@ -612,7 +667,7 @@ Y.extend(Nav, Y.Base, {
 				//xy[0] = xy[0] +50;
 				//xy[1] = xy[1] -50;
 				xy = [200,200];
-				this.splash('Rank:'+container.rank+'<br>id:'+container.node.generateID()+'<br>isHorizontal:'+container.isHorizontal,xy);
+				this.splash('style=' + this.get('styleContainer') +'Rank:'+container.rank+'<br>id:'+container.node.generateID()+'<br>isHorizontal:'+container.isHorizontal,xy);
 			}
 		}
 		
@@ -620,12 +675,10 @@ Y.extend(Nav, Y.Base, {
 		Y.BodySubscr = {};
 		if( container.isHorizontal ){
 			Y.BodySubscr.keyright = Y.one('body').on('right',Y.bind(this.onMyKeyDown,this));
-			/** ON KeyRight **/
 			Y.BodySubscr.keyleft = Y.one('body').on('left',Y.bind(this.onMyKeyUp,this));
 			Y.one('body').simulate("keydown", { keyCode: 39 });
 		} else {
 			Y.BodySubscr.keydown = Y.one('body').on('down',Y.bind(this.onMyKeyDown,this));
-			/** ON KeyUp **/
 			Y.BodySubscr.keyup = Y.one('body').on('up',Y.bind(this.onMyKeyUp,this));
 			Y.one('body').simulate("keydown", { keyCode: 40 });
 		}
@@ -686,6 +739,8 @@ Y.extend(Nav, Y.Base, {
 			childIndexInFocus,
 			newindex;
 
+
+
 		if( container ){
 			e.preventDefault();
 			childIndexInFocus = container.childIndexInFocus;
@@ -723,12 +778,12 @@ Y.extend(Nav, Y.Base, {
 	getNextIndex: function(childIndexInFocus){
 		var container = this.container,
 			numofChildren = container.children.length;
-		if(childIndexInFocus!=-1){
-			container.children[childIndexInFocus].removeClass(_CHILD_HIGHLIGHT_CLASS);
+		if(childIndexInFocus != -1){
+			container.children[childIndexInFocus].removeClass(  this.container.elemStyle || _ELEM_HIGHLIGHT_CLASS_DEFAULT);
 		}
-		if(childIndexInFocus===numofChildren-1) {
-			childIndexInFocus=-1;
-			this.wasLastChild= true;
+		if(childIndexInFocus === numofChildren-1) {
+			childIndexInFocus = -1;
+			this.wasLastChild = true;
 		} else {
 			this.wasLastChild = false;
 		}
@@ -747,7 +802,7 @@ Y.extend(Nav, Y.Base, {
 			numofChildren = container.children.length;
 
 		if( childIndexInFocus >= 0 ){
-			container.children[childIndexInFocus].removeClass(_CHILD_HIGHLIGHT_CLASS);
+			container.children[childIndexInFocus].removeClass( this.container.elemStyle || _ELEM_HIGHLIGHT_CLASS_DEFAULT);
 		}
 
 		if( childIndexInFocus === 0 ) {
@@ -769,7 +824,7 @@ Y.extend(Nav, Y.Base, {
     _scroll: function(y){
 
 
-		if(!SMOOTH_SCROLL) {
+		if( !SMOOTH_SCROLL ) {
 			window.scroll(0,y);
 		} else {
 
@@ -841,14 +896,13 @@ Y.extend(Nav, Y.Base, {
 	* @param: Node, representing the child that should gain focus.
 	*
 	*/
-	bringChildtoFocus: function( childInFocus ){
-		/**related to getting the first link on reaching a child node**/
-		var link = childInFocus.all('a'),
+	bringChildtoFocus: function( childInFocus){
+		var link = childInFocus.all('a'),/**related to getting the first link on reaching a child node**/
 			linkArr = [],
 			amounttoScroll,
 			debug_alldim={};
 
-		childInFocus.addClass( _CHILD_HIGHLIGHT_CLASS ).focus();
+		childInFocus.addClass( this.container.elemStyle || _ELEM_HIGHLIGHT_CLASS_DEFAULT ).focus();
 
 		if( this.anim && this.anim.get('running') ){
 			this.anim.pause();

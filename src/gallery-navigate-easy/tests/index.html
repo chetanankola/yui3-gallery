@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
-	<title>Javascript and CSS3 best practices</title>
+	<title>NAVIGATE EASY YUI GALLERY DEMO</title>
 	<meta http-equiv="Content-Language" content="en_US" />
 	<meta http-equiv="Content-Style-Type" content="text/css" />
 	<meta http-equiv="Content-Script-Type" content="text/javascript" />
@@ -13,7 +13,8 @@
 	<link href='http://fonts.googleapis.com/css?family=Signika+Negative|Exo|Unna' rel='stylesheet' type='text/css'>
 	<link href='http://fonts.googleapis.com/css?family=Waiting+for+the+Sunrise' rel='stylesheet' type='text/css'>
 
-	<link href='../../../build/gallery-navigate-easy/assets/gallery-navigate-easy-core.css' rel='stylesheet' type='text/css'>
+	<!--<link href='../../../build/gallery-navigate-easy/assets/gallery-navigate-easy-core.css' rel='stylesheet' type='text/css'>-->
+	<link href='index.css' rel='stylesheet' type='text/css'>
 	<link rel="icon" type="image/gif" href="http://chetanankola.com/homepage/images/logo.gif" />  
 
 </head>
@@ -93,6 +94,16 @@
 
 		<div class="bright"><p> be able to register a new node without specifying it in the config</p></div>
 		
+		<div class="bright"><p>
+			
+			cd yui3-gallery <br>
+
+#if not already created <br>
+mkdir -p src/gallery-my.custom.module/assets/skins/sam <br>
+
+touch src/gallery-my.custom.module/assets/gallery-my.custom.module-core.css<br>
+touch src/gallery-my.custom.module/assets/skins/sam/gallery-my.custom.module-skin.css<br>
+		</p></div>
 
 
 
@@ -127,13 +138,7 @@
 		<div class="bright"> <p> CUSTOM CSS- for highlighting is extremely important!! </p> </div>
 		<div class="bright"> <p> provide a flag for the container node in the registry to specify if all the children needs to be center-viewed or scrolled-top for eg: scroll-top is a awesome usecase for "slideshow"</p> </div>
 		<div class="bright"> <p> Also think about integrating this with carousal where you can move to next image by left and right arrow.</p> </div>
-
-
 	</div> 
-
-
-
- 
 
 	<ul id="links">
 		<li> `Every time this happens its a FAIL` </li>
@@ -147,16 +152,33 @@
 
 	
 	<!-- SCRIPT -->
-	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.0/jquery.min.js?ver=1.4.0"></script>
 
 	<script src="http://yui.yahooapis.com/3.6.0pr3/build/yui/yui-min.js"></script>
-	<script type="text/javascript" src="../../../build/gallery-navigate-easy/gallery-navigate-easy-debug.js"></script>
+	<!--<script type="text/javascript" src="../../../../../yui3/build/yui/yui.js"></script>-->
+	<!--<script type="text/javascript" src="../../../../../yui3/build/loader/loader.js"></script>-->
+	<!--<script type="text/javascript" src="../../../build/gallery-navigate-easy/gallery-navigate-easy-debug.js"></script> -->
+        <script type="text/javascript">
+        var Y = YUI({
+            modules: {
+                'gallery-navigate-easy': '../../../build/gallery-navigate-easy/gallery-navigate-easy-debug.js'
+            }
+        })
 
+        /*var loader = new Y.Loader({
+            base: '../../',
+            root: 'build/',
+            combine: true,
+            require: ['gallery-navigate-easy']
+        });
+        var out = loader.resolve(true);
+
+        console.log(out);*/
+        </script>
 <!-- http://yui.yahooapis.com/combo?3.6.0pr3/build/gallery-navigate-easy/assets/skins/sam/gallery-navigate-easy.css when you set skin to true this is where default is picked from-->
 	<script type="text/javascript">
 	
 	// YUI SANDBOX
-	YUI().use('gallery-navigate-easy', function (Y) {
+	Y.use('gallery-navigate-easy', function (Y) {
 		//var body = new Y.Nav({node:'body' }).initiateNavigation();
 		//var main = new Y.Nav({node:'#main' }).initiateNavigation();
 		//var sidebar = new Y.Nav({node:'#sidebar' }).initiateNavigation();
@@ -166,16 +188,21 @@
 		//Y.Nav.attachNavigation('main');
 
 		var Nav = new Y.Nav({
+							defaultContainerHightlightStyle: {className:'containerhighlight'},
+							defaultElemHighlightStyle: {className: 'transhighlight'},
 							registry:[
-								{node:'#main',pullToTop:true },
+								{	node:'#main',
+									pullToTop:true,
+									elemStyle:{ className:'main-elem-custom-highlight' }, 
+									containerStyle:{ className:'main-container-custom-highlight'} 
+								},
 								{node:'#rightbar',rank:3},
 								{node:'#links',rank:4},
 								{node:'#sidebar',rank:1},
 								{node:'#tab ul',isHorizontal:true}
 						  ],
 						  debug:true,
-						  styleContainer:true, /*optional*/
-
+						  styleContainer: true
 						}); 
 
 		Nav.register({node:'#header'});
